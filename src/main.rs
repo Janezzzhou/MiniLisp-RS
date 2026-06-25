@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use mini_lisp_rs::{tokenize, rser};
+use mini_lisp_rs::{tokenize, Parser};
 
 fn main() -> io::Result<()> {
     let stdin = io::stdin();
