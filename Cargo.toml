@@ -3,4 +3,8 @@ name = "mini_lisp_rs"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "mini_lisp_rs"   # 库名称
+path = "src/lib.rs"     # 入口文件
+
 [dependencies]

@@ -1,12 +1,13 @@
 use crate::error::LispError;
 use crate::token::Token;
 use std::iter::Peekable;
+use std::collections::VecDeque;
 use std::str::Chars;
 
 const TOKEN_END: [char; 6] = ['(', ')', '\'', '`', ',', '"'];
 
 //对外接口，用于将输入字符串转换为Token向量
-pub fn tokenize(input: &str) -> Result<Vec<Token>, LispError> {
+pub fn tokenize(input: &str) -> Result<VecDeque<Token>, LispError> {
     Tokenizer::new(input).tokenize()
 }
 
@@ -22,10 +23,10 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn tokenize(&mut self) -> Result<Vec<Token>, LispError> {  // 主循环，收集所有Token
-        let mut tokens = Vec::new();
+    fn tokenize(&mut self) -> Result<VecDeque<Token>, LispError> {  // 主循环，收集所有Token
+        let mut tokens = VecDeque::new();
         while let Some(token) = self.next_token()? {    //当还有字符时
-            tokens.push(token);
+            tokens.push_back(token);
         }
         Ok(tokens)
     }

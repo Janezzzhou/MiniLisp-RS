@@ -5,7 +5,7 @@ pub type ValuePtr = std::rc::Rc<Value>;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Boolean(bool),
-    Numeric(i64),
+    Numeric(f64),
     String(String),
     Nil,
     Symbol(String),

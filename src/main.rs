@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use mini_lisp_rs::tokenize;
+use mini_lisp_rs::{tokenize, rser};
 
 fn main() -> io::Result<()> {
     let stdin = io::stdin();
@@ -25,8 +25,10 @@ fn main() -> io::Result<()> {
 
         match tokenize(input) {
             Ok(tokens) => {
-                for t in tokens {
-                    println!("{}", t);
+                let mut parser = Parser::new(tokens);
+                match parser.parse(){
+                    Ok(value) => println!("{}", value),
+                    Err(e) => eprintln!("Parse error: {}", e),
                 }
             }
             Err(e) => eprintln!("Error: {}", e),
