@@ -14,7 +14,7 @@ fn main() -> io::Result<()> {
         let mut input = String::new();
         let bytes = stdin.read_line(&mut input)?;
         if bytes == 0 {
-            // EOF
+            // 输入为空
             break;
         }
 
