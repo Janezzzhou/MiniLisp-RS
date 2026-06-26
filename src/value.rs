@@ -26,7 +26,7 @@ impl Value {
 
         match tail.as_ref() {
             Value::Nil => write!(f, ")"),
-            other => write!(f, " . {} )", other),
+            other => write!(f, " . {})", other),
         }
     }
 }
