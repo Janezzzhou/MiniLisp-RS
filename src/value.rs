@@ -1,6 +1,8 @@
 ﻿use std::fmt;
+use crate::error::LispError;
 
 pub type ValuePtr = std::rc::Rc<Value>;
+pub type BuiltinFunc = fn(Vec<ValuePtr>) -> Result<ValuePtr, LispError>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -10,6 +12,7 @@ pub enum Value {
     Nil,
     Symbol(String),
     Pair(ValuePtr, ValuePtr),
+    BuiltinProc(BuiltinFunc),
 }
 
 impl Value {
@@ -31,16 +34,6 @@ impl Value {
     }
 }
 
-impl Value {
-    pub fn is_self_evaluating(&self) -> bool {
-        matches!(self, Value::Boolean(_) | Value::Numeric(_) | Value::String(_))
-    }
-
-    pub fn is_nil(&self) -> bool {
-        matches!(self, Value::Nil)
-    }
-}
-
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -51,22 +44,55 @@ impl fmt::Display for Value {
             Value::Nil => write!(f, "()"),
             Value::Symbol(s) => write!(f, "{}", s),
             Value::Pair(car, cdr) => Value::fmt_pair(car, cdr, f),
+            Value::BuiltinProc(_) => {write!(f, "#<procedure>")}
         }
     }
 }
 
-use crate::error::LispError;
+impl Value {
+    // 类型判断
+    pub fn is_self_evaluating(&self) -> bool {
+        matches!(self, Value::Boolean(_) | Value::Numeric(_) | Value::String(_) | Value::BuiltinProc(_)) 
+    }
+
+    pub fn is_nil(&self) -> bool {
+        matches!(self, Value::Nil)
+    }
+
+    pub fn is_builtin_proc(&self) -> bool {
+        matches!(self, Value::BuiltinProc(_))
+    }
+
+    pub fn is_number(&self) -> bool {
+        matches!(self, Value::Numeric(_))
+    }
+}
 
 impl Value {
-    /// 如果是 Symbol，返回名字
+    // 类型转换
     pub fn as_symbol(&self) -> Option<&str> {
+        // 如果是 Symbol，返回名字
         match self {
             Value::Symbol(s) => Some(s),
             _ => None,
         }
     }
 
-    /// 将 Proper List 转换为 Vec<ValuePtr>
+    pub fn as_builtin_proc(&self) -> Option<BuiltinFunc> {
+        match self {
+            Value::BuiltinProc(f) => Some(*f),
+            _ => None,
+        }
+    }
+
+    pub fn as_number(&self) -> Option<f64> {
+        match self {
+            Value::Numeric(n) => Some(*n),
+            _ => None,
+        }
+    }
+
+    // 列表操作：将 Proper List 转换为 Vec<ValuePtr>
     pub fn to_vec(&self) -> Result<Vec<ValuePtr>, LispError> {
         let mut result = Vec::new();
         let mut current = self;
@@ -74,16 +100,12 @@ impl Value {
         loop {
             match current {
                 Value::Nil => return Ok(result),
-
                 Value::Pair(car, cdr) => {
                     result.push(car.clone());
                     current = cdr.as_ref();
                 }
-
                 _ => {
-                    return Err(LispError::RuntimeError(
-                        "Malformed list.".into(),
-                    ));
+                    return Err(LispError::RuntimeError("Malformed list.".into(),));
                 }
             }
         }

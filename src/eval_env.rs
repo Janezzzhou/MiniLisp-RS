@@ -2,6 +2,7 @@ use crate::error::LispError;
 use crate::value::ValuePtr;
 use crate::value::Value;
 use std::collections::HashMap;
+use crate::builtins::builtin_map;
 
 pub struct EvalEnv {
     symbols: HashMap<String, ValuePtr>,
@@ -10,7 +11,7 @@ pub struct EvalEnv {
 impl EvalEnv {
     pub fn new() -> Self {
         Self {
-            symbols: HashMap::new(),
+            symbols: builtin_map(),
         }
     }
 
@@ -60,14 +61,25 @@ impl EvalEnv {
                 return Ok(ValuePtr::new(Value::Nil));
             }
         }
+        let proc = self.eval(v[0].clone())?;
+        let args = self.eval_list(&v[1..])?;
+        self.apply(proc, args)
+    }
 
-        Err(LispError::RuntimeError(
-            "Unimplemented".into(),
-        ))
+    fn eval_list(&mut self,list: &[ValuePtr],) -> Result<Vec<ValuePtr>, LispError> {
+        let mut result = Vec::new();
+        for expr in list {
+            result.push(self.eval(expr.clone())?);
+        }
+        Ok(result)
+    }
+    fn apply(&mut self, proc: ValuePtr, args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
+        if let Some(f) = proc.as_builtin_proc() {
+            return f(args);
+        }
+        Err(LispError::RuntimeError("Unimplemented".into()))
     }
 }
-
-// src/eval_env.rs 末尾添加
 
 #[cfg(test)]
 mod tests {
@@ -130,22 +142,81 @@ mod tests {
 
     #[test]
     fn test_malformed_define() {
-        // 缺少参数
         let err = eval_str("(define x)").unwrap_err();
         assert!(matches!(err, LispError::RuntimeError(_)));
-        // 变量名不是符号
+
         let err = eval_str("(define 123 42)").unwrap_err();
         assert!(matches!(err, LispError::RuntimeError(_)));
-        // 非法列表（点对），to_vec 会报错
+
         let err = eval_str("(define x . 42)").unwrap_err();
         assert!(matches!(err, LispError::RuntimeError(_)));
     }
 
+    // --- 新增测试：内置过程 + 和 print ---
+
     #[test]
-    fn test_unimplemented() {
-        let err = eval_str("(+ 1 2)").unwrap_err();
+    fn test_builtin_add() {
+        // 单个参数
+        assert_eq!(eval_str("(+ 1 2)").unwrap(), "3");
+        // 零参数
+        assert_eq!(eval_str("(+)").unwrap(), "0");
+        // 多个参数
+        assert_eq!(eval_str("(+ 1 2 3 4 5)").unwrap(), "15");
+        // 浮点数
+        assert_eq!(eval_str("(+ 1.5 2.5)").unwrap(), "4");
+    }
+
+    #[test]
+    fn test_define_with_add() {
+        let mut env = EvalEnv::new();
+
+        assert_eq!(eval_in_env(&mut env, "(define x (+ 1 2))").unwrap(), "()");
+        assert_eq!(eval_in_env(&mut env, "x").unwrap(), "3");
+
+        assert_eq!(eval_in_env(&mut env, "(+ x 4)").unwrap(), "7");
+    }
+
+    #[test]
+    fn test_define_alias() {
+        let mut env = EvalEnv::new();
+
+        assert_eq!(eval_in_env(&mut env, "(define add +)").unwrap(), "()");
+        assert_eq!(eval_in_env(&mut env, "(add 1 2 3)").unwrap(), "6");
+        // 继续使用原 + 也正常
+        assert_eq!(eval_in_env(&mut env, "(+ 10 20)").unwrap(), "30");
+    }
+
+    #[test]
+    fn test_nested_add() {
+        let mut env = EvalEnv::new();
+
+        assert_eq!(eval_in_env(&mut env, "(define add +)").unwrap(), "()");
+        assert_eq!(eval_in_env(&mut env, "(+ 1 (add 2))").unwrap(), "3");
+        assert_eq!(eval_in_env(&mut env, "(+ (add 1 2) (add 3 4))").unwrap(), "10");
+    }
+
+    #[test]
+    fn test_builtin_print() {
+        // print 返回空表
+        assert_eq!(eval_str("(print 42)").unwrap(), "()");
+        // print 可以接受多个参数（通常实现为逐个打印，但返回值是空表）
+        // 这里只测试返回值，输出无法在单元测试中轻易捕获，故忽略
+        assert_eq!(eval_str("(print 1 2 3)").unwrap(), "()");
+        // print 表达式本身是自求值的？不，它是过程调用
+        // 嵌套使用
+        assert_eq!(eval_str("(print (+ 1 2))").unwrap(), "()");
+    }
+
+    // 修改原来的 test_unimplemented，针对未定义的过程
+    #[test]
+    fn test_unknown_procedure() {
+        let err = eval_str("(unknown 1 2)").unwrap_err();
         match err {
-            LispError::RuntimeError(msg) => assert_eq!(msg, "Unimplemented"),
+            LispError::RuntimeError(msg) => {
+                // 期望错误信息包含 "not defined" 或类似
+                assert!(msg.contains("not defined") || msg.contains("Variable") || msg.contains("Unimplemented"),
+                    "Unexpected error message: {}", msg);
+            }
             _ => panic!("Expected RuntimeError"),
         }
     }
@@ -153,7 +224,6 @@ mod tests {
     #[test]
     fn test_env_persistence() {
         let mut env = EvalEnv::new();
-        // 构造 (define x 100)
         let expr1 = ValuePtr::new(Value::Pair(
             ValuePtr::new(Value::Symbol("define".to_string())),
             ValuePtr::new(Value::Pair(
