@@ -1,6 +1,5 @@
 use crate::error::LispError;
 use crate::value::ValuePtr;
-use crate::value::Value;
 use std::collections::HashMap;
 use crate::builtins::builtin_map;
 
@@ -41,26 +40,7 @@ impl EvalEnv {
         if v.is_empty() {
             return Err(LispError::RuntimeError("Empty list".into()));
         }
-        // 检查 define 特殊形式
-        if let Some(op) = v[0].as_symbol() {
-            if op == "define" {
-                // 参数数量检查
-                if v.len() != 3 {
-                    return Err(LispError::RuntimeError(
-                        "define requires exactly 2 arguments".into(),
-                    ));
-                }
-                // 获取变量名（必须是符号）
-                let name = v[1]
-                    .as_symbol()
-                    .ok_or_else(|| LispError::RuntimeError("define first arg must be symbol".into()))?;
-                // 对值表达式求值
-                let value = self.eval(v[2].clone())?;
-                // 存入符号表
-                self.symbols.insert(name.to_string(), value);
-                return Ok(ValuePtr::new(Value::Nil));
-            }
-        }
+        
         let proc = self.eval(v[0].clone())?;
         let args = self.eval_list(&v[1..])?;
         self.apply(proc, args)
@@ -73,11 +53,16 @@ impl EvalEnv {
         }
         Ok(result)
     }
+
     fn apply(&mut self, proc: ValuePtr, args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
         if let Some(f) = proc.as_builtin_proc() {
             return f(args);
         }
         Err(LispError::RuntimeError("Unimplemented".into()))
+    }
+
+    pub fn define(&mut self, name: String, value: ValuePtr,) {
+        self.symbols.insert(name, value);
     }
 }
 

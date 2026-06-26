@@ -5,6 +5,7 @@ pub mod value;
 pub mod parser;
 pub mod eval_env;
 pub mod builtins;
+pub mod form;
 
 pub use token::Token;
 pub use tokenizer::tokenize;

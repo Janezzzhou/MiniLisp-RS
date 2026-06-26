@@ -66,12 +66,19 @@ impl Value {
     pub fn is_number(&self) -> bool {
         matches!(self, Value::Numeric(_))
     }
+
+    pub fn is_false(&self) -> bool {
+        matches!(self, Value::Boolean(false))
+    }
+
+    pub fn is_true(&self) -> bool {
+        !self.is_false()
+    }
 }
 
 impl Value {
     // 类型转换
     pub fn as_symbol(&self) -> Option<&str> {
-        // 如果是 Symbol，返回名字
         match self {
             Value::Symbol(s) => Some(s),
             _ => None,
