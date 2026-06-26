@@ -14,39 +14,43 @@ impl Parser {
     }
 
     // 入口方法，解析表达式
-    pub fn parse(&mut self) -> Result<Value, LispError> {
+    pub fn parse(&mut self) -> Result<ValuePtr, LispError> {
         let token = self.pop_token()?;
 
         match token {
-            Token::BooleanLiteral(value) => Ok(Value::Boolean(value)),
-            Token::NumericLiteral(value) => Ok(Value::Numeric(value)),
-            Token::StringLiteral(value) => Ok(Value::String(value)),
-            Token::Identifier(symbol) => Ok(Value::Symbol(symbol)),
+            Token::BooleanLiteral(value) => Ok(ValuePtr::new(Value::Boolean(value))),
+            Token::NumericLiteral(value) => Ok(ValuePtr::new(Value::Numeric(value))),
+            Token::StringLiteral(value) => Ok(ValuePtr::new(Value::String(value))),
+            Token::Identifier(symbol) => Ok(ValuePtr::new(Value::Symbol(symbol))),
             Token::LeftParen => self.parse_tails(),
-            Token::Quote => {let expr = self.parse()?;
+            Token::Quote => {
+                let expr = self.parse()?;
                 Ok(Self::make_list(vec![
-                    Value::Symbol("quote".into()),
+                    ValuePtr::new(Value::Symbol("quote".into())),
                     expr,
                 ]))
             }
             Token::Quasiquote => {
                 let expr = self.parse()?;
                 Ok(Self::make_list(vec![
-                    Value::Symbol("quasiquote".into()),
+                    ValuePtr::new(Value::Symbol("quasiquote".into())),
                     expr,
                 ]))
             }
             Token::Unquote => {
                 let expr = self.parse()?;
                 Ok(Self::make_list(vec![
-                    Value::Symbol("unquote".into()),
+                    ValuePtr::new(Value::Symbol("unquote".into())),
                     expr,
                 ]))
             }
             other => Err(LispError::SyntaxError(format!("Unexpected token: {}", other))),
         }
     }
+}
 
+impl Parser {
+    // 内部的辅助函数
     fn pop_token(&mut self) -> Result<Token, LispError> {
         self.tokens
             .pop_front()
@@ -57,20 +61,23 @@ impl Parser {
         self.tokens.front()
     }
 
-    fn make_list(values: Vec<Value>) -> Value {
+    fn make_list(values: Vec<ValuePtr>) -> ValuePtr {
         values
             .into_iter()
             .rev()
-            .fold(Value::Nil, |cdr, car| {
-                Value::Pair(ValuePtr::new(car), ValuePtr::new(cdr),)
-            })
+            .fold(
+                ValuePtr::new(Value::Nil),
+                |cdr, car| {
+                    ValuePtr::new(Value::Pair(car, cdr))
+                },
+            )
     }
 
-    pub fn parse_tails(&mut self) -> Result<Value, LispError> {
+    fn parse_tails(&mut self) -> Result<ValuePtr, LispError> {
         // ()
         if matches!(self.peek_token(), Some(Token::RightParen)) {
             self.pop_token()?; // 吃掉 )
-            return Ok(Value::Nil);
+            return Ok(ValuePtr::new(Value::Nil));
         }
 
         // 解析 car
@@ -92,13 +99,13 @@ impl Parser {
                 }
             }
 
-            return Ok(Value::Pair(ValuePtr::new(car),ValuePtr::new(cdr),));
+            return Ok(ValuePtr::new(Value::Pair(car, cdr)));        
         }
 
         // (a b c)
         let cdr = self.parse_tails()?;
 
-        Ok(Value::Pair(ValuePtr::new(car),ValuePtr::new(cdr),))
+        Ok(ValuePtr::new(Value::Pair(car, cdr)))
     }
 }
 
