@@ -4,6 +4,7 @@ use std::fmt;
 pub enum LispError {
     InvalidNumber(String),
     SyntaxError(String),
+    RuntimeError(String),
     Other(String),
 }
 
@@ -12,6 +13,7 @@ impl fmt::Display for LispError {
         match self {
             LispError::InvalidNumber(s) => write!(f, "Invalid number literal: {}", s),
             LispError::SyntaxError(s) => write!(f, "Syntax error: {}", s),
+            LispError::RuntimeError(s) => write!(f, "Runtime error: {}", s),
             LispError::Other(s) => write!(f, "{}", s),
         }
     }

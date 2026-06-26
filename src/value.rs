@@ -31,6 +31,16 @@ impl Value {
     }
 }
 
+impl Value {
+    pub fn is_self_evaluating(&self) -> bool {
+        matches!(self, Value::Boolean(_) | Value::Numeric(_) | Value::String(_))
+    }
+
+    pub fn is_nil(&self) -> bool {
+        matches!(self, Value::Nil)
+    }
+}
+
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
