@@ -54,3 +54,38 @@ impl fmt::Display for Value {
         }
     }
 }
+
+use crate::error::LispError;
+
+impl Value {
+    /// 如果是 Symbol，返回名字
+    pub fn as_symbol(&self) -> Option<&str> {
+        match self {
+            Value::Symbol(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// 将 Proper List 转换为 Vec<ValuePtr>
+    pub fn to_vec(&self) -> Result<Vec<ValuePtr>, LispError> {
+        let mut result = Vec::new();
+        let mut current = self;
+
+        loop {
+            match current {
+                Value::Nil => return Ok(result),
+
+                Value::Pair(car, cdr) => {
+                    result.push(car.clone());
+                    current = cdr.as_ref();
+                }
+
+                _ => {
+                    return Err(LispError::RuntimeError(
+                        "Malformed list.".into(),
+                    ));
+                }
+            }
+        }
+    }
+}
