@@ -77,7 +77,7 @@ impl EvalEnv {
 
         let proc = Self::eval(env, v[0].clone())?;
         let args = Self::eval_list(env, &v[1..])?;
-        Self::apply(proc, args)
+        Self::apply_procedure(env, proc, args)
     }
 
     fn eval_list(env: &EnvPtr, list: &[ValuePtr]) -> Result<Vec<ValuePtr>, LispError> {
@@ -88,9 +88,13 @@ impl EvalEnv {
         Ok(result)
     }
 
-    fn apply(proc: ValuePtr, args: Vec<ValuePtr>) -> Result<ValuePtr, LispError> {
+    pub fn apply_procedure(
+        env: &EnvPtr,
+        proc: ValuePtr,
+        args: Vec<ValuePtr>,
+    ) -> Result<ValuePtr, LispError> {
         if let Some(f) = proc.as_builtin_proc() {
-            return f(args);
+            return f(args, env);
         }
 
         if let Some((params, body, defining_env)) = proc.as_lambda_proc() {
@@ -296,6 +300,42 @@ mod tests {
     fn test_builtin_cdr() {
         assert_eq!(eval_str("(cdr '(1 . 2))").unwrap(), "2");
         assert_eq!(eval_str("(cdr '(1 2 3))").unwrap(), "(2 3)");
+    }
+
+    #[test]
+    fn test_builtin_apply() {
+        assert_eq!(eval_str("(apply + '(1 2 3))").unwrap(), "6");
+        assert_eq!(eval_str("(apply - '(10 3 2))").unwrap(), "5");
+    }
+
+    #[test]
+    fn test_builtin_eval() {
+        assert_eq!(eval_str("(eval '(+ 1 2 3))").unwrap(), "6");
+    }
+
+    #[test]
+    fn test_error_builtin_signals_runtime_error() {
+        let err = eval_str("(error \"boom\")").unwrap_err();
+        match err {
+            LispError::RuntimeError(msg) => assert_eq!(msg, "boom"),
+            _ => panic!("Expected RuntimeError"),
+        }
+    }
+
+    #[test]
+    fn test_exit_builtin_signals_exit() {
+        let err = eval_str("(exit 7)").unwrap_err();
+        match err {
+            LispError::Exit(code) => assert_eq!(code, 7),
+            _ => panic!("Expected Exit"),
+        }
+    }
+
+    #[test]
+    fn test_display_family_returns_nil() {
+        assert_eq!(eval_str("(display \"hi\")").unwrap(), "()");
+        assert_eq!(eval_str("(displayln \"hi\")").unwrap(), "()");
+        assert_eq!(eval_str("(newline)").unwrap(), "()");
     }
 
     #[test]

@@ -5,6 +5,7 @@ pub enum LispError {
     InvalidNumber(String),
     SyntaxError(String),
     RuntimeError(String),
+    Exit(i32),
     Other(String),
 }
 
@@ -14,6 +15,7 @@ impl fmt::Display for LispError {
             LispError::InvalidNumber(s) => write!(f, "Invalid number literal: {}", s),
             LispError::SyntaxError(s) => write!(f, "Syntax error: {}", s),
             LispError::RuntimeError(s) => write!(f, "Runtime error: {}", s),
+            LispError::Exit(code) => write!(f, "Exit with code {}", code),
             LispError::Other(s) => write!(f, "{}", s),
         }
     }

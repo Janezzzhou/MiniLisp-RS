@@ -3,7 +3,7 @@ use crate::eval_env::EnvPtr;
 use std::fmt;
 
 pub type ValuePtr = std::rc::Rc<Value>;
-pub type BuiltinFunc = fn(Vec<ValuePtr>) -> Result<ValuePtr, LispError>;
+pub type BuiltinFunc = fn(Vec<ValuePtr>, &EnvPtr) -> Result<ValuePtr, LispError>;
 
 #[derive(Debug, Clone)]
 pub enum Value {

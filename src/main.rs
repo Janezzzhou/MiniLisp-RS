@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use mini_lisp_rs::{tokenize, EvalEnv, Parser};
+use mini_lisp_rs::{tokenize, EvalEnv, LispError, Parser};
 
 fn main() -> io::Result<()> {
     let stdin = io::stdin();
@@ -30,6 +30,7 @@ fn main() -> io::Result<()> {
                 match parser.parse(){
                     Ok(expr) => match EvalEnv::eval(&env, expr) {
                         Ok(value) => println!("{}", value),
+                        Err(LispError::Exit(code)) => std::process::exit(code),
                         Err(e) => eprintln!("Error: {}", e),
                     },
                     Err(e) => eprintln!("Parse error: {}", e),

@@ -1,4 +1,6 @@
 use crate::error::*;
+use crate::eval_env::EnvPtr;
+use crate::eval_env::EvalEnv;
 use crate::value::*;
 use std::collections::HashMap;
 
@@ -36,6 +38,41 @@ pub fn builtin_map() -> HashMap<String, ValuePtr> {
     );
 
     map.insert(
+        "apply".into(),
+        ValuePtr::new(Value::BuiltinProc(apply_proc)),
+    );
+
+    map.insert(
+        "display".into(),
+        ValuePtr::new(Value::BuiltinProc(display_proc)),
+    );
+
+    map.insert(
+        "displayln".into(),
+        ValuePtr::new(Value::BuiltinProc(displayln_proc)),
+    );
+
+    map.insert(
+        "error".into(),
+        ValuePtr::new(Value::BuiltinProc(error_proc)),
+    );
+
+    map.insert(
+        "eval".into(),
+        ValuePtr::new(Value::BuiltinProc(eval_proc)),
+    );
+
+    map.insert(
+        "exit".into(),
+        ValuePtr::new(Value::BuiltinProc(exit_proc)),
+    );
+
+    map.insert(
+        "newline".into(),
+        ValuePtr::new(Value::BuiltinProc(newline_proc)),
+    );
+
+    map.insert(
         "print".into(),
         ValuePtr::new(Value::BuiltinProc(print_proc)),
     );
@@ -43,7 +80,7 @@ pub fn builtin_map() -> HashMap<String, ValuePtr> {
     map
 }
 
-pub fn add(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
+pub fn add(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     let mut sum = 0.0;
     for arg in args {
         sum += arg
@@ -53,7 +90,7 @@ pub fn add(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
     Ok(ValuePtr::new(Value::Numeric(sum),))
 }
 
-pub fn sub(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
+pub fn sub(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     if args.is_empty() {
         return Err(LispError::RuntimeError("- requires at least 1 argument".into()));
     }
@@ -75,7 +112,7 @@ pub fn sub(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
     Ok(ValuePtr::new(Value::Numeric(result)))
 }
 
-pub fn mul(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
+pub fn mul(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     let mut product = 1.0;
     for arg in args {
         product *= arg
@@ -85,7 +122,7 @@ pub fn mul(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
     Ok(ValuePtr::new(Value::Numeric(product),))
 }
 
-pub fn gt(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
+pub fn gt(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     if args.len() != 2 {
         return Err(LispError::RuntimeError("> requires 2 arguments".into()));
     }
@@ -100,7 +137,7 @@ pub fn gt(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
     Ok(ValuePtr::new(Value::Boolean(left > right)))
 }
 
-pub fn length(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
+pub fn length(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     if args.len() != 1 {
         return Err(LispError::RuntimeError("length requires 1 argument".into()));
     }
@@ -109,7 +146,7 @@ pub fn length(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
     Ok(ValuePtr::new(Value::Numeric(count)))
 }
 
-pub fn cdr(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
+pub fn cdr(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     if args.len() != 1 {
         return Err(LispError::RuntimeError("cdr requires 1 argument".into()));
     }
@@ -120,7 +157,83 @@ pub fn cdr(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
     }
 }
 
-pub fn print_proc(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
+pub fn apply_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
+    if args.len() != 2 {
+        return Err(LispError::RuntimeError("apply requires 2 arguments".into()));
+    }
+
+    let proc = args[0].clone();
+    let list_args = args[1].to_vec()?;
+    EvalEnv::apply_procedure(env, proc, list_args)
+}
+
+pub fn display_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    if args.len() != 1 {
+        return Err(LispError::RuntimeError("display requires 1 argument".into()));
+    }
+
+    match args[0].as_ref() {
+        Value::String(s) => print!("{}", s),
+        other => print!("{}", other),
+    }
+    Ok(ValuePtr::new(Value::Nil))
+}
+
+pub fn displayln_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
+    if args.len() != 1 {
+        return Err(LispError::RuntimeError("displayln requires 1 argument".into()));
+    }
+
+    display_proc(args, env)?;
+    newline_proc(Vec::new(), env)
+}
+
+pub fn error_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let message = match args.as_slice() {
+        [] => "error".to_string(),
+        [value] => match value.as_ref() {
+            Value::String(s) => s.clone(),
+            other => other.to_string(),
+        },
+        _ => return Err(LispError::RuntimeError("error accepts at most 1 argument".into())),
+    };
+
+    Err(LispError::RuntimeError(message))
+}
+
+pub fn eval_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
+    if args.len() != 1 {
+        return Err(LispError::RuntimeError("eval requires 1 argument".into()));
+    }
+
+    EvalEnv::eval(env, args[0].clone())
+}
+
+pub fn exit_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let code = match args.as_slice() {
+        [] => 0,
+        [value] => {
+            let number = value
+                .as_number()
+                .ok_or_else(|| LispError::RuntimeError("exit expects a number".into()))?;
+            number as i32
+        }
+        _ => return Err(LispError::RuntimeError("exit accepts at most 1 argument".into())),
+    };
+
+    Err(LispError::Exit(code))
+}
+
+pub fn newline_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    if !args.is_empty() {
+        return Err(LispError::RuntimeError("newline requires 0 arguments".into()));
+    }
+
+    println!();
+    Ok(ValuePtr::new(Value::Nil))
+}
+
+pub fn print_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     for v in args {
         println!("{}", v);
     }
