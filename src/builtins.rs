@@ -8,6 +8,16 @@ pub fn builtin_map() -> HashMap<String, ValuePtr> {
     let mut map = HashMap::new();
 
     map.insert(
+        "atom?".into(),
+        ValuePtr::new(Value::BuiltinProc(atom_pred)),
+    );
+
+    map.insert(
+        "boolean?".into(),
+        ValuePtr::new(Value::BuiltinProc(boolean_pred)),
+    );
+
+    map.insert(
         "+".into(),
         ValuePtr::new(Value::BuiltinProc(add)),
     );
@@ -68,8 +78,33 @@ pub fn builtin_map() -> HashMap<String, ValuePtr> {
     );
 
     map.insert(
+        "integer?".into(),
+        ValuePtr::new(Value::BuiltinProc(integer_pred)),
+    );
+
+    map.insert(
+        "list?".into(),
+        ValuePtr::new(Value::BuiltinProc(list_pred)),
+    );
+
+    map.insert(
+        "null?".into(),
+        ValuePtr::new(Value::BuiltinProc(null_pred)),
+    );
+
+    map.insert(
         "newline".into(),
         ValuePtr::new(Value::BuiltinProc(newline_proc)),
+    );
+
+    map.insert(
+        "number?".into(),
+        ValuePtr::new(Value::BuiltinProc(number_pred)),
+    );
+
+    map.insert(
+        "pair?".into(),
+        ValuePtr::new(Value::BuiltinProc(pair_pred)),
     );
 
     map.insert(
@@ -77,7 +112,54 @@ pub fn builtin_map() -> HashMap<String, ValuePtr> {
         ValuePtr::new(Value::BuiltinProc(print_proc)),
     );
 
+    map.insert(
+        "procedure?".into(),
+        ValuePtr::new(Value::BuiltinProc(procedure_pred)),
+    );
+
+    map.insert(
+        "string?".into(),
+        ValuePtr::new(Value::BuiltinProc(string_pred)),
+    );
+
+    map.insert(
+        "symbol?".into(),
+        ValuePtr::new(Value::BuiltinProc(symbol_pred)),
+    );
+
     map
+}
+
+fn expect_one_arg<'a>(name: &str, args: &'a [ValuePtr]) -> Result<&'a ValuePtr, LispError> {
+    match args {
+        [value] => Ok(value),
+        _ => Err(LispError::RuntimeError(format!("{} requires 1 argument", name))),
+    }
+}
+
+fn bool_value(value: bool) -> ValuePtr {
+    ValuePtr::new(Value::Boolean(value))
+}
+
+fn is_list_value(value: &Value) -> bool {
+    match value {
+        Value::Nil => true,
+        Value::Pair(_, cdr) => is_list_value(cdr.as_ref()),
+        _ => false,
+    }
+}
+
+pub fn atom_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("atom?", &args)?;
+    Ok(bool_value(matches!(
+        value.as_ref(),
+        Value::Boolean(_) | Value::Numeric(_) | Value::String(_) | Value::Symbol(_) | Value::Nil
+    )))
+}
+
+pub fn boolean_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("boolean?", &args)?;
+    Ok(bool_value(matches!(value.as_ref(), Value::Boolean(_))))
 }
 
 pub fn add(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
@@ -137,6 +219,20 @@ pub fn gt(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     Ok(ValuePtr::new(Value::Boolean(left > right)))
 }
 
+pub fn integer_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("integer?", &args)?;
+    let is_integer = match value.as_ref() {
+        Value::Numeric(n) => n.fract() == 0.0,
+        _ => false,
+    };
+    Ok(bool_value(is_integer))
+}
+
+pub fn list_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("list?", &args)?;
+    Ok(bool_value(is_list_value(value.as_ref())))
+}
+
 pub fn length(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     if args.len() != 1 {
         return Err(LispError::RuntimeError("length requires 1 argument".into()));
@@ -155,6 +251,21 @@ pub fn cdr(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
         Value::Pair(_, cdr) => Ok(cdr.clone()),
         _ => Err(LispError::RuntimeError("cdr expects a pair".into())),
     }
+}
+
+pub fn null_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("null?", &args)?;
+    Ok(bool_value(matches!(value.as_ref(), Value::Nil)))
+}
+
+pub fn number_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("number?", &args)?;
+    Ok(bool_value(matches!(value.as_ref(), Value::Numeric(_))))
+}
+
+pub fn pair_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("pair?", &args)?;
+    Ok(bool_value(matches!(value.as_ref(), Value::Pair(_, _))))
 }
 
 pub fn apply_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
@@ -233,9 +344,27 @@ pub fn newline_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispErr
     Ok(ValuePtr::new(Value::Nil))
 }
 
+pub fn procedure_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("procedure?", &args)?;
+    Ok(bool_value(matches!(
+        value.as_ref(),
+        Value::BuiltinProc(_) | Value::LambdaProc { .. }
+    )))
+}
+
 pub fn print_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     for v in args {
         println!("{}", v);
     }
     Ok(ValuePtr::new(Value::Nil))
+}
+
+pub fn string_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("string?", &args)?;
+    Ok(bool_value(matches!(value.as_ref(), Value::String(_))))
+}
+
+pub fn symbol_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("symbol?", &args)?;
+    Ok(bool_value(matches!(value.as_ref(), Value::Symbol(_))))
 }

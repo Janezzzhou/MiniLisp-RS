@@ -303,6 +303,43 @@ mod tests {
     }
 
     #[test]
+    fn test_type_predicates() {
+        assert_eq!(eval_str("(atom? #t)").unwrap(), "#t");
+        assert_eq!(eval_str("(atom? 'abc)").unwrap(), "#t");
+        assert_eq!(eval_str("(atom? '())").unwrap(), "#t");
+        assert_eq!(eval_str("(atom? '(1 . 2))").unwrap(), "#f");
+
+        assert_eq!(eval_str("(boolean? #f)").unwrap(), "#t");
+        assert_eq!(eval_str("(boolean? 0)").unwrap(), "#f");
+
+        assert_eq!(eval_str("(integer? 3)").unwrap(), "#t");
+        assert_eq!(eval_str("(integer? 3.5)").unwrap(), "#f");
+
+        assert_eq!(eval_str("(list? '())").unwrap(), "#t");
+        assert_eq!(eval_str("(list? '(1 2 3))").unwrap(), "#t");
+        assert_eq!(eval_str("(list? '(1 . 2))").unwrap(), "#f");
+
+        assert_eq!(eval_str("(number? 3.14)").unwrap(), "#t");
+        assert_eq!(eval_str("(number? 'abc)").unwrap(), "#f");
+
+        assert_eq!(eval_str("(null? '())").unwrap(), "#t");
+        assert_eq!(eval_str("(null? '(1))").unwrap(), "#f");
+
+        assert_eq!(eval_str("(pair? '(1 . 2))").unwrap(), "#t");
+        assert_eq!(eval_str("(pair? '())").unwrap(), "#f");
+
+        assert_eq!(eval_str("(procedure? +)").unwrap(), "#t");
+        assert_eq!(eval_str("(procedure? (lambda (x) x))").unwrap(), "#t");
+        assert_eq!(eval_str("(procedure? 1)").unwrap(), "#f");
+
+        assert_eq!(eval_str("(string? \"hello\")").unwrap(), "#t");
+        assert_eq!(eval_str("(string? 'hello)").unwrap(), "#f");
+
+        assert_eq!(eval_str("(symbol? 'hello)").unwrap(), "#t");
+        assert_eq!(eval_str("(symbol? \"hello\")").unwrap(), "#f");
+    }
+
+    #[test]
     fn test_builtin_apply() {
         assert_eq!(eval_str("(apply + '(1 2 3))").unwrap(), "6");
         assert_eq!(eval_str("(apply - '(10 3 2))").unwrap(), "5");
