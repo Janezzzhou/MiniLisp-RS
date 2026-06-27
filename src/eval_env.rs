@@ -1,4 +1,5 @@
 use crate::error::LispError;
+use crate::form::lookup_special_form;
 use crate::value::ValuePtr;
 use std::collections::HashMap;
 use crate::builtins::builtin_map;
@@ -40,7 +41,13 @@ impl EvalEnv {
         if v.is_empty() {
             return Err(LispError::RuntimeError("Empty list".into()));
         }
-        
+
+        if let Some(name) = v[0].as_symbol() {
+            if let Some(form) = lookup_special_form(name) {
+                return form(&v[1..], self);
+            }
+        }
+
         let proc = self.eval(v[0].clone())?;
         let args = self.eval_list(&v[1..])?;
         self.apply(proc, args)
@@ -71,6 +78,7 @@ mod tests {
     use super::*;
     use crate::parser::Parser;
     use crate::tokenizer::tokenize;
+    use crate::value::Value;
 
     // 每次新建环境，用于独立的求值测试
     fn eval_str(input: &str) -> Result<String, LispError> {
@@ -190,6 +198,37 @@ mod tests {
         // print 表达式本身是自求值的？不，它是过程调用
         // 嵌套使用
         assert_eq!(eval_str("(print (+ 1 2))").unwrap(), "()");
+    }
+
+    // 5.2 的测试（if 和短路求值）
+    #[test]
+    fn test_if_with_quoted_nil_is_truthy() {
+        assert_eq!(eval_str("(if '() (print \"Yea\") (print \"Nay\"))").unwrap(), "()");
+    }
+
+    #[test]
+    fn test_if_false_branch() {
+        assert_eq!(eval_str("(if #f (print \"Yea\") (print \"Nay\"))").unwrap(), "()");
+    }
+
+    #[test]
+    fn test_and_short_circuit() {
+        assert_eq!(eval_str("(and (print 1) (print 2) #f (print 3))").unwrap(), "#f");
+    }
+
+    #[test]
+    fn test_or_short_circuit() {
+        assert_eq!(eval_str("(or #f #f (print 1) (print 3))").unwrap(), "()");
+    }
+
+    #[test]
+    fn test_and_skips_later_erroring_expression() {
+        assert_eq!(eval_str("(and #f unknown-symbol)").unwrap(), "#f");
+    }
+
+    #[test]
+    fn test_or_skips_later_erroring_expression() {
+        assert_eq!(eval_str("(or 1 unknown-symbol)").unwrap(), "1");
     }
 
     // 修改原来的 test_unimplemented，针对未定义的过程

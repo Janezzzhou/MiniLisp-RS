@@ -4,7 +4,7 @@ use crate::error::LispError;
 pub type ValuePtr = std::rc::Rc<Value>;
 pub type BuiltinFunc = fn(Vec<ValuePtr>) -> Result<ValuePtr, LispError>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Value {
     Boolean(bool),
     Numeric(f64),
@@ -13,6 +13,23 @@ pub enum Value {
     Symbol(String),
     Pair(ValuePtr, ValuePtr),
     BuiltinProc(BuiltinFunc),
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Boolean(a), Value::Boolean(b)) => a == b,
+            (Value::Numeric(a), Value::Numeric(b)) => a == b,
+            (Value::String(a), Value::String(b)) => a == b,
+            (Value::Nil, Value::Nil) => true,
+            (Value::Symbol(a), Value::Symbol(b)) => a == b,
+            (Value::Pair(a_car, a_cdr), Value::Pair(b_car, b_cdr)) => {
+                a_car == b_car && a_cdr == b_cdr
+            }
+            (Value::BuiltinProc(a), Value::BuiltinProc(b)) => std::ptr::fn_addr_eq(*a, *b),
+            _ => false,
+        }
+    }
 }
 
 impl Value {
