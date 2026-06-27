@@ -166,10 +166,9 @@ impl eframe::App for GuiApp {
                             .size(self.theme.body_font_size)
                             .color(self.theme.text_color),
                     );
-                    let editor_height = columns[0].available_height();
                     let input_rect = egui::Rect::from_min_size(
                         columns[0].cursor().min,
-                        egui::vec2(columns[0].available_width(), editor_height),
+                        egui::vec2(columns[0].available_width(), columns[0].available_height()),
                     );
                     let input_output = columns[0]
                         .scope_builder(egui::UiBuilder::new().max_rect(input_rect), |ui| {
@@ -192,7 +191,7 @@ impl eframe::App for GuiApp {
                     );
                     let output_rect = egui::Rect::from_min_size(
                         columns[1].cursor().min,
-                        egui::vec2(columns[1].available_width(), editor_height),
+                        egui::vec2(columns[1].available_width(), columns[1].available_height()),
                     );
                     columns[1].scope_builder(egui::UiBuilder::new().max_rect(output_rect), |ui| {
                         egui::TextEdit::multiline(&mut self.output)
