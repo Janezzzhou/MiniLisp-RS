@@ -13,6 +13,10 @@ impl Parser {
         Self { tokens }
     }
 
+    pub fn has_tokens(&self) -> bool {
+        !self.tokens.is_empty()
+    }
+
     // 入口方法，解析表达式
     pub fn parse(&mut self) -> Result<ValuePtr, LispError> {
         let token = self.pop_token()?;

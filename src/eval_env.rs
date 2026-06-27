@@ -561,4 +561,24 @@ mod tests {
         );
         assert_eq!(eval_in_env(&env, "(a-plus-abs-b 3 -2)").unwrap(), "5");
     }
+
+    #[test]
+    fn test_begin_cond_let_and_quasiquote() {
+        let env = EvalEnv::new();
+
+        assert_eq!(eval_str("(begin 1 2 3)").unwrap(), "3");
+
+        assert_eq!(eval_in_env(&env, "(define n -5)").unwrap(), "()");
+        assert_eq!(
+            eval_in_env(&env, "(cond ((< n 0) -1) ((> n 0) 1) (else 0))").unwrap(),
+            "-1"
+        );
+
+        assert_eq!(
+            eval_str("(let ((x 5) (y 10)) (print x) (print y) (+ x y))").unwrap(),
+            "15"
+        );
+
+        assert_eq!(eval_str("`(11 45 ,(* 2 7))").unwrap(), "(11 45 14)");
+    }
 }
