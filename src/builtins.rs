@@ -16,7 +16,10 @@ pub fn builtin_map() -> HashMap<String, ValuePtr> {
     map.insert("cons".into(), ValuePtr::new(Value::BuiltinProc(cons_proc)));
     map.insert("display".into(), ValuePtr::new(Value::BuiltinProc(display_proc)));
     map.insert("displayln".into(), ValuePtr::new(Value::BuiltinProc(displayln_proc)));
+    map.insert("eq?".into(), ValuePtr::new(Value::BuiltinProc(eq_pred)));
+    map.insert("equal?".into(), ValuePtr::new(Value::BuiltinProc(equal_pred)));
     map.insert("error".into(), ValuePtr::new(Value::BuiltinProc(error_proc)));
+    map.insert("even?".into(), ValuePtr::new(Value::BuiltinProc(even_pred)));
     map.insert("eval".into(), ValuePtr::new(Value::BuiltinProc(eval_proc)));
     map.insert("exit".into(), ValuePtr::new(Value::BuiltinProc(exit_proc)));
     map.insert("filter".into(), ValuePtr::new(Value::BuiltinProc(filter_proc)));
@@ -26,18 +29,25 @@ pub fn builtin_map() -> HashMap<String, ValuePtr> {
     map.insert("list?".into(), ValuePtr::new(Value::BuiltinProc(list_pred)));
     map.insert("map".into(), ValuePtr::new(Value::BuiltinProc(map_proc)));
     map.insert("newline".into(), ValuePtr::new(Value::BuiltinProc(newline_proc)));
+    map.insert("not".into(), ValuePtr::new(Value::BuiltinProc(not_pred)));
     map.insert("null?".into(), ValuePtr::new(Value::BuiltinProc(null_pred)));
     map.insert("number?".into(), ValuePtr::new(Value::BuiltinProc(number_pred)));
+    map.insert("odd?".into(), ValuePtr::new(Value::BuiltinProc(odd_pred)));
     map.insert("pair?".into(), ValuePtr::new(Value::BuiltinProc(pair_pred)));
     map.insert("print".into(), ValuePtr::new(Value::BuiltinProc(print_proc)));
     map.insert("procedure?".into(), ValuePtr::new(Value::BuiltinProc(procedure_pred)));
     map.insert("reduce".into(), ValuePtr::new(Value::BuiltinProc(reduce_proc)));
     map.insert("string?".into(), ValuePtr::new(Value::BuiltinProc(string_pred)));
     map.insert("symbol?".into(), ValuePtr::new(Value::BuiltinProc(symbol_pred)));
+    map.insert("zero?".into(), ValuePtr::new(Value::BuiltinProc(zero_pred)));
     map.insert("+".into(), ValuePtr::new(Value::BuiltinProc(add)));
     map.insert("-".into(), ValuePtr::new(Value::BuiltinProc(sub)));
     map.insert("*".into(), ValuePtr::new(Value::BuiltinProc(mul)));
+    map.insert("=".into(), ValuePtr::new(Value::BuiltinProc(num_eq)));
+    map.insert("<".into(), ValuePtr::new(Value::BuiltinProc(lt)));
+    map.insert("<=".into(), ValuePtr::new(Value::BuiltinProc(le)));
     map.insert(">".into(), ValuePtr::new(Value::BuiltinProc(gt)));
+    map.insert(">=".into(), ValuePtr::new(Value::BuiltinProc(ge)));
 
     map
 }
@@ -65,6 +75,22 @@ fn is_list_value(value: &Value) -> bool {
         Value::Pair(_, cdr) => is_list_value(cdr.as_ref()),
         _ => false,
     }
+}
+
+fn expect_two_args<'a>(
+    name: &str,
+    args: &'a [ValuePtr],
+) -> Result<(&'a ValuePtr, &'a ValuePtr), LispError> {
+    match args {
+        [left, right] => Ok((left, right)),
+        _ => Err(LispError::RuntimeError(format!("{} requires 2 arguments", name))),
+    }
+}
+
+fn expect_number_arg(name: &str, value: &ValuePtr) -> Result<f64, LispError> {
+    value
+        .as_number()
+        .ok_or_else(|| LispError::RuntimeError(format!("{} expects a number", name)))
 }
 
 pub fn add(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
@@ -147,6 +173,27 @@ pub fn displayln_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, Lis
     newline_proc(Vec::new(), env)
 }
 
+pub fn eq_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let (left, right) = expect_two_args("eq?", &args)?;
+    let is_eq = match (left.as_ref(), right.as_ref()) {
+        (Value::Nil, Value::Nil) => true,
+        (Value::Boolean(a), Value::Boolean(b)) => a == b,
+        (Value::Numeric(a), Value::Numeric(b)) => a == b,
+        (Value::String(a), Value::String(b)) => a == b,
+        (Value::Symbol(a), Value::Symbol(b)) => a == b,
+        (Value::BuiltinProc(a), Value::BuiltinProc(b)) => std::ptr::fn_addr_eq(*a, *b),
+        (Value::Pair(_, _), Value::Pair(_, _)) => std::rc::Rc::ptr_eq(left, right),
+        (Value::LambdaProc { .. }, Value::LambdaProc { .. }) => std::rc::Rc::ptr_eq(left, right),
+        _ => false,
+    };
+    Ok(bool_value(is_eq))
+}
+
+pub fn equal_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let (left, right) = expect_two_args("equal?", &args)?;
+    Ok(bool_value(left.as_ref() == right.as_ref()))
+}
+
 pub fn error_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     let message = match args.as_slice() {
         [] => "error".to_string(),
@@ -158,6 +205,12 @@ pub fn error_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError
     };
 
     Err(LispError::RuntimeError(message))
+}
+
+pub fn even_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("even?", &args)?;
+    let number = expect_number_arg("even?", value)?;
+    Ok(bool_value(number.fract() == 0.0 && (number as i64) % 2 == 0))
 }
 
 pub fn eval_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
@@ -200,18 +253,18 @@ pub fn filter_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispEr
 }
 
 pub fn gt(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
-    if args.len() != 2 {
-        return Err(LispError::RuntimeError("> requires 2 arguments".into()));
-    }
-
-    let left = args[0]
-        .as_number()
-        .ok_or_else(|| LispError::RuntimeError("> expects numbers".into()))?;
-    let right = args[1]
-        .as_number()
-        .ok_or_else(|| LispError::RuntimeError("> expects numbers".into()))?;
+    let (left, right) = expect_two_args(">", &args)?;
+    let left = expect_number_arg(">", left)?;
+    let right = expect_number_arg(">", right)?;
 
     Ok(ValuePtr::new(Value::Boolean(left > right)))
+}
+
+pub fn ge(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let (left, right) = expect_two_args(">=", &args)?;
+    let left = expect_number_arg(">=", left)?;
+    let right = expect_number_arg(">=", right)?;
+    Ok(bool_value(left >= right))
 }
 
 pub fn integer_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
@@ -254,6 +307,11 @@ pub fn map_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError
     Ok(list_from_vec(mapped))
 }
 
+pub fn not_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("not", &args)?;
+    Ok(bool_value(value.is_false()))
+}
+
 pub fn mul(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     let mut product = 1.0;
     for arg in args {
@@ -288,6 +346,12 @@ pub fn pair_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError>
     Ok(bool_value(matches!(value.as_ref(), Value::Pair(_, _))))
 }
 
+pub fn odd_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("odd?", &args)?;
+    let number = expect_number_arg("odd?", value)?;
+    Ok(bool_value(number.fract() == 0.0 && (number as i64) % 2 != 0))
+}
+
 pub fn print_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     for v in args {
         println!("{}", v);
@@ -301,6 +365,13 @@ pub fn procedure_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispE
         value.as_ref(),
         Value::BuiltinProc(_) | Value::LambdaProc { .. }
     )))
+}
+
+pub fn num_eq(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let (left, right) = expect_two_args("=", &args)?;
+    let left = expect_number_arg("=", left)?;
+    let right = expect_number_arg("=", right)?;
+    Ok(bool_value(left == right))
 }
 
 pub fn reduce_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
@@ -353,4 +424,24 @@ pub fn sub(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
 pub fn symbol_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     let value = expect_one_arg("symbol?", &args)?;
     Ok(bool_value(matches!(value.as_ref(), Value::Symbol(_))))
+}
+
+pub fn lt(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let (left, right) = expect_two_args("<", &args)?;
+    let left = expect_number_arg("<", left)?;
+    let right = expect_number_arg("<", right)?;
+    Ok(bool_value(left < right))
+}
+
+pub fn le(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let (left, right) = expect_two_args("<=", &args)?;
+    let left = expect_number_arg("<=", left)?;
+    let right = expect_number_arg("<=", right)?;
+    Ok(bool_value(left <= right))
+}
+
+pub fn zero_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("zero?", &args)?;
+    let number = expect_number_arg("zero?", value)?;
+    Ok(bool_value(number == 0.0))
 }

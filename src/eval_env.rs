@@ -325,6 +325,32 @@ mod tests {
     }
 
     #[test]
+    fn test_comparison_and_numeric_predicates() {
+        let env = EvalEnv::new();
+
+        assert_eq!(eval_str("(not #f)").unwrap(), "#t");
+        assert_eq!(eval_str("(not 1)").unwrap(), "#f");
+
+        assert_eq!(eval_str("(= 2 2)").unwrap(), "#t");
+        assert_eq!(eval_str("(< 1 2)").unwrap(), "#t");
+        assert_eq!(eval_str("(<= 2 2)").unwrap(), "#t");
+        assert_eq!(eval_str("(> 3 2)").unwrap(), "#t");
+        assert_eq!(eval_str("(>= 3 3)").unwrap(), "#t");
+
+        assert_eq!(eval_str("(even? 4)").unwrap(), "#t");
+        assert_eq!(eval_str("(even? 3)").unwrap(), "#f");
+        assert_eq!(eval_str("(odd? 3)").unwrap(), "#t");
+        assert_eq!(eval_str("(odd? 4)").unwrap(), "#f");
+        assert_eq!(eval_str("(zero? 0)").unwrap(), "#t");
+        assert_eq!(eval_str("(zero? -0)").unwrap(), "#t");
+
+        assert_eq!(eval_str("(eq? '(1 2 3) '(1 2 3))").unwrap(), "#f");
+        assert_eq!(eval_in_env(&env, "(define x '(1 2 3))").unwrap(), "()");
+        assert_eq!(eval_in_env(&env, "(eq? x x)").unwrap(), "#t");
+        assert_eq!(eval_str("(equal? '(1 2 3) '(1 2 3))").unwrap(), "#t");
+    }
+
+    #[test]
     fn test_type_predicates() {
         assert_eq!(eval_str("(atom? #t)").unwrap(), "#t");
         assert_eq!(eval_str("(atom? 'abc)").unwrap(), "#t");
