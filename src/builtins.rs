@@ -8,6 +8,7 @@ pub fn builtin_map() -> HashMap<String, ValuePtr> {
     let mut map = HashMap::new();
 
     map.insert("append".into(), ValuePtr::new(Value::BuiltinProc(append_proc)));
+    map.insert("abs".into(), ValuePtr::new(Value::BuiltinProc(abs_proc)));
     map.insert("apply".into(), ValuePtr::new(Value::BuiltinProc(apply_proc)));
     map.insert("atom?".into(), ValuePtr::new(Value::BuiltinProc(atom_pred)));
     map.insert("boolean?".into(), ValuePtr::new(Value::BuiltinProc(boolean_pred)));
@@ -21,6 +22,7 @@ pub fn builtin_map() -> HashMap<String, ValuePtr> {
     map.insert("error".into(), ValuePtr::new(Value::BuiltinProc(error_proc)));
     map.insert("even?".into(), ValuePtr::new(Value::BuiltinProc(even_pred)));
     map.insert("eval".into(), ValuePtr::new(Value::BuiltinProc(eval_proc)));
+    map.insert("expt".into(), ValuePtr::new(Value::BuiltinProc(expt_proc)));
     map.insert("exit".into(), ValuePtr::new(Value::BuiltinProc(exit_proc)));
     map.insert("filter".into(), ValuePtr::new(Value::BuiltinProc(filter_proc)));
     map.insert("integer?".into(), ValuePtr::new(Value::BuiltinProc(integer_pred)));
@@ -36,16 +38,20 @@ pub fn builtin_map() -> HashMap<String, ValuePtr> {
     map.insert("pair?".into(), ValuePtr::new(Value::BuiltinProc(pair_pred)));
     map.insert("print".into(), ValuePtr::new(Value::BuiltinProc(print_proc)));
     map.insert("procedure?".into(), ValuePtr::new(Value::BuiltinProc(procedure_pred)));
+    map.insert("quotient".into(), ValuePtr::new(Value::BuiltinProc(quotient_proc)));
     map.insert("reduce".into(), ValuePtr::new(Value::BuiltinProc(reduce_proc)));
+    map.insert("remainder".into(), ValuePtr::new(Value::BuiltinProc(remainder_proc)));
     map.insert("string?".into(), ValuePtr::new(Value::BuiltinProc(string_pred)));
     map.insert("symbol?".into(), ValuePtr::new(Value::BuiltinProc(symbol_pred)));
     map.insert("zero?".into(), ValuePtr::new(Value::BuiltinProc(zero_pred)));
     map.insert("+".into(), ValuePtr::new(Value::BuiltinProc(add)));
     map.insert("-".into(), ValuePtr::new(Value::BuiltinProc(sub)));
     map.insert("*".into(), ValuePtr::new(Value::BuiltinProc(mul)));
+    map.insert("/".into(), ValuePtr::new(Value::BuiltinProc(div_proc)));
     map.insert("=".into(), ValuePtr::new(Value::BuiltinProc(num_eq)));
     map.insert("<".into(), ValuePtr::new(Value::BuiltinProc(lt)));
     map.insert("<=".into(), ValuePtr::new(Value::BuiltinProc(le)));
+    map.insert("modulo".into(), ValuePtr::new(Value::BuiltinProc(modulo_proc)));
     map.insert(">".into(), ValuePtr::new(Value::BuiltinProc(gt)));
     map.insert(">=".into(), ValuePtr::new(Value::BuiltinProc(ge)));
 
@@ -93,6 +99,14 @@ fn expect_number_arg(name: &str, value: &ValuePtr) -> Result<f64, LispError> {
         .ok_or_else(|| LispError::RuntimeError(format!("{} expects a number", name)))
 }
 
+fn expect_nonzero_number_arg(name: &str, value: &ValuePtr) -> Result<f64, LispError> {
+    let number = expect_number_arg(name, value)?;
+    if number == 0.0 {
+        return Err(LispError::RuntimeError(format!("{} division by zero", name)));
+    }
+    Ok(number)
+}
+
 pub fn add(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     let mut sum = 0.0;
     for arg in args {
@@ -101,6 +115,11 @@ pub fn add(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
             .ok_or_else(|| LispError::RuntimeError("Cannot add non-number".into()))?;
     }
     Ok(ValuePtr::new(Value::Numeric(sum)))
+}
+
+pub fn abs_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("abs", &args)?;
+    Ok(ValuePtr::new(Value::Numeric(expect_number_arg("abs", value)?.abs())))
 }
 
 pub fn append_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
@@ -173,6 +192,22 @@ pub fn displayln_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, Lis
     newline_proc(Vec::new(), env)
 }
 
+pub fn div_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    match args.as_slice() {
+        [] => Err(LispError::RuntimeError("/ requires at least 1 argument".into())),
+        [value] => {
+            let denominator = expect_nonzero_number_arg("/", value)?;
+            Ok(ValuePtr::new(Value::Numeric(1.0 / denominator)))
+        }
+        [left, right] => {
+            let numerator = expect_number_arg("/", left)?;
+            let denominator = expect_nonzero_number_arg("/", right)?;
+            Ok(ValuePtr::new(Value::Numeric(numerator / denominator)))
+        }
+        _ => Err(LispError::RuntimeError("/ supports 1 or 2 arguments".into())),
+    }
+}
+
 pub fn eq_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     let (left, right) = expect_two_args("eq?", &args)?;
     let is_eq = match (left.as_ref(), right.as_ref()) {
@@ -205,6 +240,16 @@ pub fn error_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError
     };
 
     Err(LispError::RuntimeError(message))
+}
+
+pub fn expt_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let (left, right) = expect_two_args("expt", &args)?;
+    let base = expect_number_arg("expt", left)?;
+    let exponent = expect_number_arg("expt", right)?;
+    if base == 0.0 && exponent == 0.0 {
+        return Err(LispError::RuntimeError("expt is undefined for 0^0".into()));
+    }
+    Ok(ValuePtr::new(Value::Numeric(base.powf(exponent))))
 }
 
 pub fn even_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
@@ -341,6 +386,13 @@ pub fn number_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispErro
     Ok(bool_value(matches!(value.as_ref(), Value::Numeric(_))))
 }
 
+pub fn quotient_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let (left, right) = expect_two_args("quotient", &args)?;
+    let dividend = expect_number_arg("quotient", left)?;
+    let divisor = expect_nonzero_number_arg("quotient", right)?;
+    Ok(ValuePtr::new(Value::Numeric((dividend / divisor).trunc())))
+}
+
 pub fn pair_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     let value = expect_one_arg("pair?", &args)?;
     Ok(bool_value(matches!(value.as_ref(), Value::Pair(_, _))))
@@ -394,6 +446,14 @@ pub fn reduce_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispEr
     EvalEnv::apply_procedure(env, proc, vec![first, reduced_rest])
 }
 
+pub fn remainder_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let (left, right) = expect_two_args("remainder", &args)?;
+    let dividend = expect_number_arg("remainder", left)?;
+    let divisor = expect_nonzero_number_arg("remainder", right)?;
+    let quotient = (dividend / divisor).trunc();
+    Ok(ValuePtr::new(Value::Numeric(dividend - divisor * quotient)))
+}
+
 pub fn string_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     let value = expect_one_arg("string?", &args)?;
     Ok(bool_value(matches!(value.as_ref(), Value::String(_))))
@@ -424,6 +484,18 @@ pub fn sub(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
 pub fn symbol_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     let value = expect_one_arg("symbol?", &args)?;
     Ok(bool_value(matches!(value.as_ref(), Value::Symbol(_))))
+}
+
+pub fn modulo_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let (left, right) = expect_two_args("modulo", &args)?;
+    let dividend = expect_number_arg("modulo", left)?;
+    let divisor = expect_nonzero_number_arg("modulo", right)?;
+    let quotient = (dividend / divisor).trunc();
+    let mut remainder = dividend - divisor * quotient;
+    if remainder != 0.0 && remainder.signum() != divisor.signum() {
+        remainder += divisor;
+    }
+    Ok(ValuePtr::new(Value::Numeric(remainder)))
 }
 
 pub fn lt(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {

@@ -351,6 +351,26 @@ mod tests {
     }
 
     #[test]
+    fn test_numeric_library() {
+        assert_eq!(eval_str("(/ 4)").unwrap(), "0.25");
+        assert_eq!(eval_str("(/ 7 2)").unwrap(), "3.5");
+        assert_eq!(eval_str("(abs -3)").unwrap(), "3");
+        assert_eq!(eval_str("(expt 2 3)").unwrap(), "8");
+        assert_eq!(eval_str("(quotient 7 2)").unwrap(), "3");
+        assert_eq!(eval_str("(quotient -7 2)").unwrap(), "-3");
+
+        assert_eq!(eval_str("(modulo 10 3)").unwrap(), "1");
+        assert_eq!(eval_str("(modulo -10 3)").unwrap(), "2");
+        assert_eq!(eval_str("(modulo 10 -3)").unwrap(), "-2");
+        assert_eq!(eval_str("(modulo -10 -3)").unwrap(), "-1");
+
+        assert_eq!(eval_str("(remainder 10 3)").unwrap(), "1");
+        assert_eq!(eval_str("(remainder -10 3)").unwrap(), "-1");
+        assert_eq!(eval_str("(remainder 10 -3)").unwrap(), "1");
+        assert_eq!(eval_str("(remainder -10 -3)").unwrap(), "-1");
+    }
+
+    #[test]
     fn test_type_predicates() {
         assert_eq!(eval_str("(atom? #t)").unwrap(), "#t");
         assert_eq!(eval_str("(atom? 'abc)").unwrap(), "#t");
