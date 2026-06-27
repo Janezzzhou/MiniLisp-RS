@@ -1,6 +1,7 @@
 use crate::error::*;
 use crate::eval_env::EnvPtr;
 use crate::eval_env::EvalEnv;
+use crate::output;
 use crate::value::*;
 use std::collections::HashMap;
 
@@ -180,8 +181,8 @@ pub fn cons_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError>
 pub fn display_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     let value = expect_one_arg("display", &args)?;
     match value.as_ref() {
-        Value::String(s) => print!("{}", s),
-        other => print!("{}", other),
+        Value::String(s) => output::write(s),
+        other => output::write(&other.to_string()),
     }
     Ok(ValuePtr::new(Value::Nil))
 }
@@ -372,7 +373,7 @@ pub fn newline_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispErr
         return Err(LispError::RuntimeError("newline requires 0 arguments".into()));
     }
 
-    println!();
+    output::newline();
     Ok(ValuePtr::new(Value::Nil))
 }
 
@@ -406,7 +407,7 @@ pub fn odd_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> 
 
 pub fn print_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     for v in args {
-        println!("{}", v);
+        output::writeln(&v.to_string());
     }
     Ok(ValuePtr::new(Value::Nil))
 }

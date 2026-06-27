@@ -8,3 +8,4 @@ name = "mini_lisp_rs"   # 库名称
 path = "src/lib.rs"     # 入口文件
 
 [dependencies]
+eframe = "0.35.0"

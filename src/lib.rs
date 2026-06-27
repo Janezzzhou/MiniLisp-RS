@@ -6,6 +6,7 @@ pub mod parser;
 pub mod eval_env;
 pub mod builtins;
 pub mod form;
+pub mod output;
 
 pub use token::Token;
 pub use tokenizer::tokenize;
@@ -22,7 +23,7 @@ pub fn execute_source(source: &str, env: &EnvPtr, print_results: bool) -> Result
         let expr = parser.parse()?;
         let value = EvalEnv::eval(env, expr)?;
         if print_results {
-            println!("{}", value);
+            output::writeln(&value.to_string());
         }
     }
 
