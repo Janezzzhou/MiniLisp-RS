@@ -7,125 +7,37 @@ use std::collections::HashMap;
 pub fn builtin_map() -> HashMap<String, ValuePtr> {
     let mut map = HashMap::new();
 
-    map.insert(
-        "atom?".into(),
-        ValuePtr::new(Value::BuiltinProc(atom_pred)),
-    );
-
-    map.insert(
-        "boolean?".into(),
-        ValuePtr::new(Value::BuiltinProc(boolean_pred)),
-    );
-
-    map.insert(
-        "+".into(),
-        ValuePtr::new(Value::BuiltinProc(add)),
-    );
-
-    map.insert(
-        "-".into(),
-        ValuePtr::new(Value::BuiltinProc(sub)),
-    );
-
-    map.insert(
-        "*".into(),
-        ValuePtr::new(Value::BuiltinProc(mul)),
-    );
-
-    map.insert(
-        ">".into(),
-        ValuePtr::new(Value::BuiltinProc(gt)),
-    );
-
-    map.insert(
-        "length".into(),
-        ValuePtr::new(Value::BuiltinProc(length)),
-    );
-
-    map.insert(
-        "cdr".into(),
-        ValuePtr::new(Value::BuiltinProc(cdr)),
-    );
-
-    map.insert(
-        "apply".into(),
-        ValuePtr::new(Value::BuiltinProc(apply_proc)),
-    );
-
-    map.insert(
-        "display".into(),
-        ValuePtr::new(Value::BuiltinProc(display_proc)),
-    );
-
-    map.insert(
-        "displayln".into(),
-        ValuePtr::new(Value::BuiltinProc(displayln_proc)),
-    );
-
-    map.insert(
-        "error".into(),
-        ValuePtr::new(Value::BuiltinProc(error_proc)),
-    );
-
-    map.insert(
-        "eval".into(),
-        ValuePtr::new(Value::BuiltinProc(eval_proc)),
-    );
-
-    map.insert(
-        "exit".into(),
-        ValuePtr::new(Value::BuiltinProc(exit_proc)),
-    );
-
-    map.insert(
-        "integer?".into(),
-        ValuePtr::new(Value::BuiltinProc(integer_pred)),
-    );
-
-    map.insert(
-        "list?".into(),
-        ValuePtr::new(Value::BuiltinProc(list_pred)),
-    );
-
-    map.insert(
-        "null?".into(),
-        ValuePtr::new(Value::BuiltinProc(null_pred)),
-    );
-
-    map.insert(
-        "newline".into(),
-        ValuePtr::new(Value::BuiltinProc(newline_proc)),
-    );
-
-    map.insert(
-        "number?".into(),
-        ValuePtr::new(Value::BuiltinProc(number_pred)),
-    );
-
-    map.insert(
-        "pair?".into(),
-        ValuePtr::new(Value::BuiltinProc(pair_pred)),
-    );
-
-    map.insert(
-        "print".into(),
-        ValuePtr::new(Value::BuiltinProc(print_proc)),
-    );
-
-    map.insert(
-        "procedure?".into(),
-        ValuePtr::new(Value::BuiltinProc(procedure_pred)),
-    );
-
-    map.insert(
-        "string?".into(),
-        ValuePtr::new(Value::BuiltinProc(string_pred)),
-    );
-
-    map.insert(
-        "symbol?".into(),
-        ValuePtr::new(Value::BuiltinProc(symbol_pred)),
-    );
+    map.insert("append".into(), ValuePtr::new(Value::BuiltinProc(append_proc)));
+    map.insert("apply".into(), ValuePtr::new(Value::BuiltinProc(apply_proc)));
+    map.insert("atom?".into(), ValuePtr::new(Value::BuiltinProc(atom_pred)));
+    map.insert("boolean?".into(), ValuePtr::new(Value::BuiltinProc(boolean_pred)));
+    map.insert("car".into(), ValuePtr::new(Value::BuiltinProc(car_proc)));
+    map.insert("cdr".into(), ValuePtr::new(Value::BuiltinProc(cdr)));
+    map.insert("cons".into(), ValuePtr::new(Value::BuiltinProc(cons_proc)));
+    map.insert("display".into(), ValuePtr::new(Value::BuiltinProc(display_proc)));
+    map.insert("displayln".into(), ValuePtr::new(Value::BuiltinProc(displayln_proc)));
+    map.insert("error".into(), ValuePtr::new(Value::BuiltinProc(error_proc)));
+    map.insert("eval".into(), ValuePtr::new(Value::BuiltinProc(eval_proc)));
+    map.insert("exit".into(), ValuePtr::new(Value::BuiltinProc(exit_proc)));
+    map.insert("filter".into(), ValuePtr::new(Value::BuiltinProc(filter_proc)));
+    map.insert("integer?".into(), ValuePtr::new(Value::BuiltinProc(integer_pred)));
+    map.insert("length".into(), ValuePtr::new(Value::BuiltinProc(length)));
+    map.insert("list".into(), ValuePtr::new(Value::BuiltinProc(list_proc)));
+    map.insert("list?".into(), ValuePtr::new(Value::BuiltinProc(list_pred)));
+    map.insert("map".into(), ValuePtr::new(Value::BuiltinProc(map_proc)));
+    map.insert("newline".into(), ValuePtr::new(Value::BuiltinProc(newline_proc)));
+    map.insert("null?".into(), ValuePtr::new(Value::BuiltinProc(null_pred)));
+    map.insert("number?".into(), ValuePtr::new(Value::BuiltinProc(number_pred)));
+    map.insert("pair?".into(), ValuePtr::new(Value::BuiltinProc(pair_pred)));
+    map.insert("print".into(), ValuePtr::new(Value::BuiltinProc(print_proc)));
+    map.insert("procedure?".into(), ValuePtr::new(Value::BuiltinProc(procedure_pred)));
+    map.insert("reduce".into(), ValuePtr::new(Value::BuiltinProc(reduce_proc)));
+    map.insert("string?".into(), ValuePtr::new(Value::BuiltinProc(string_pred)));
+    map.insert("symbol?".into(), ValuePtr::new(Value::BuiltinProc(symbol_pred)));
+    map.insert("+".into(), ValuePtr::new(Value::BuiltinProc(add)));
+    map.insert("-".into(), ValuePtr::new(Value::BuiltinProc(sub)));
+    map.insert("*".into(), ValuePtr::new(Value::BuiltinProc(mul)));
+    map.insert(">".into(), ValuePtr::new(Value::BuiltinProc(gt)));
 
     map
 }
@@ -141,12 +53,46 @@ fn bool_value(value: bool) -> ValuePtr {
     ValuePtr::new(Value::Boolean(value))
 }
 
+fn list_from_vec(values: Vec<ValuePtr>) -> ValuePtr {
+    values.into_iter().rev().fold(ValuePtr::new(Value::Nil), |cdr, car| {
+        ValuePtr::new(Value::Pair(car, cdr))
+    })
+}
+
 fn is_list_value(value: &Value) -> bool {
     match value {
         Value::Nil => true,
         Value::Pair(_, cdr) => is_list_value(cdr.as_ref()),
         _ => false,
     }
+}
+
+pub fn add(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let mut sum = 0.0;
+    for arg in args {
+        sum += arg
+            .as_number()
+            .ok_or_else(|| LispError::RuntimeError("Cannot add non-number".into()))?;
+    }
+    Ok(ValuePtr::new(Value::Numeric(sum)))
+}
+
+pub fn append_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let mut result = Vec::new();
+    for list in args {
+        result.extend(list.to_vec()?);
+    }
+    Ok(list_from_vec(result))
+}
+
+pub fn apply_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
+    if args.len() != 2 {
+        return Err(LispError::RuntimeError("apply requires 2 arguments".into()));
+    }
+
+    let proc = args[0].clone();
+    let list_args = args[1].to_vec()?;
+    EvalEnv::apply_procedure(env, proc, list_args)
 }
 
 pub fn atom_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
@@ -162,46 +108,95 @@ pub fn boolean_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispErr
     Ok(bool_value(matches!(value.as_ref(), Value::Boolean(_))))
 }
 
-pub fn add(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
-    let mut sum = 0.0;
-    for arg in args {
-        sum += arg
-            .as_number()
-            .ok_or_else(|| {LispError::RuntimeError("Cannot add non-number".into())})?;
+pub fn car_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("car", &args)?;
+    match value.as_ref() {
+        Value::Pair(car, _) => Ok(car.clone()),
+        _ => Err(LispError::RuntimeError("car expects a pair".into())),
     }
-    Ok(ValuePtr::new(Value::Numeric(sum),))
 }
 
-pub fn sub(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
-    if args.is_empty() {
-        return Err(LispError::RuntimeError("- requires at least 1 argument".into()));
+pub fn cdr(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("cdr", &args)?;
+    match value.as_ref() {
+        Value::Pair(_, cdr) => Ok(cdr.clone()),
+        _ => Err(LispError::RuntimeError("cdr expects a pair".into())),
     }
-
-    let first = args[0]
-        .as_number()
-        .ok_or_else(|| LispError::RuntimeError("Cannot sub non-number".into()))?;
-
-    if args.len() == 1 {
-        return Ok(ValuePtr::new(Value::Numeric(-first)));
-    }
-
-    let mut result = first;
-    for arg in &args[1..] {
-        result -= arg
-            .as_number()
-            .ok_or_else(|| LispError::RuntimeError("Cannot sub non-number".into()))?;
-    }
-    Ok(ValuePtr::new(Value::Numeric(result)))
 }
 
-pub fn mul(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
-    let mut product = 1.0;
-    for arg in args {
-        product *= arg
-            .as_number()
-            .ok_or_else(|| {LispError::RuntimeError("Cannot mul non-number".into())})?;
+pub fn cons_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    if args.len() != 2 {
+        return Err(LispError::RuntimeError("cons requires 2 arguments".into()));
     }
-    Ok(ValuePtr::new(Value::Numeric(product),))
+
+    Ok(ValuePtr::new(Value::Pair(args[0].clone(), args[1].clone())))
+}
+
+pub fn display_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("display", &args)?;
+    match value.as_ref() {
+        Value::String(s) => print!("{}", s),
+        other => print!("{}", other),
+    }
+    Ok(ValuePtr::new(Value::Nil))
+}
+
+pub fn displayln_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let value = expect_one_arg("displayln", &args)?.clone();
+    display_proc(vec![value], env)?;
+    newline_proc(Vec::new(), env)
+}
+
+pub fn error_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let message = match args.as_slice() {
+        [] => "error".to_string(),
+        [value] => match value.as_ref() {
+            Value::String(s) => s.clone(),
+            other => other.to_string(),
+        },
+        _ => return Err(LispError::RuntimeError("error accepts at most 1 argument".into())),
+    };
+
+    Err(LispError::RuntimeError(message))
+}
+
+pub fn eval_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let expr = expect_one_arg("eval", &args)?;
+    EvalEnv::eval(env, expr.clone())
+}
+
+pub fn exit_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let code = match args.as_slice() {
+        [] => 0,
+        [value] => {
+            let number = value
+                .as_number()
+                .ok_or_else(|| LispError::RuntimeError("exit expects a number".into()))?;
+            number as i32
+        }
+        _ => return Err(LispError::RuntimeError("exit accepts at most 1 argument".into())),
+    };
+
+    Err(LispError::Exit(code))
+}
+
+pub fn filter_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
+    if args.len() != 2 {
+        return Err(LispError::RuntimeError("filter requires 2 arguments".into()));
+    }
+
+    let proc = args[0].clone();
+    let items = args[1].to_vec()?;
+    let mut kept = Vec::new();
+
+    for item in items {
+        let result = EvalEnv::apply_procedure(env, proc.clone(), vec![item.clone()])?;
+        if result.is_true() {
+            kept.push(item);
+        }
+    }
+
+    Ok(list_from_vec(kept))
 }
 
 pub fn gt(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
@@ -228,29 +223,54 @@ pub fn integer_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispErr
     Ok(bool_value(is_integer))
 }
 
+pub fn length(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let list = expect_one_arg("length", &args)?;
+    let count = list.to_vec()?.len() as f64;
+    Ok(ValuePtr::new(Value::Numeric(count)))
+}
+
+pub fn list_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    Ok(list_from_vec(args))
+}
+
 pub fn list_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     let value = expect_one_arg("list?", &args)?;
     Ok(bool_value(is_list_value(value.as_ref())))
 }
 
-pub fn length(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
-    if args.len() != 1 {
-        return Err(LispError::RuntimeError("length requires 1 argument".into()));
+pub fn map_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
+    if args.len() != 2 {
+        return Err(LispError::RuntimeError("map requires 2 arguments".into()));
     }
 
-    let count = args[0].to_vec()?.len() as f64;
-    Ok(ValuePtr::new(Value::Numeric(count)))
+    let proc = args[0].clone();
+    let items = args[1].to_vec()?;
+    let mut mapped = Vec::new();
+
+    for item in items {
+        mapped.push(EvalEnv::apply_procedure(env, proc.clone(), vec![item])?);
+    }
+
+    Ok(list_from_vec(mapped))
 }
 
-pub fn cdr(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
-    if args.len() != 1 {
-        return Err(LispError::RuntimeError("cdr requires 1 argument".into()));
+pub fn mul(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    let mut product = 1.0;
+    for arg in args {
+        product *= arg
+            .as_number()
+            .ok_or_else(|| LispError::RuntimeError("Cannot mul non-number".into()))?;
+    }
+    Ok(ValuePtr::new(Value::Numeric(product)))
+}
+
+pub fn newline_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    if !args.is_empty() {
+        return Err(LispError::RuntimeError("newline requires 0 arguments".into()));
     }
 
-    match args[0].as_ref() {
-        Value::Pair(_, cdr) => Ok(cdr.clone()),
-        _ => Err(LispError::RuntimeError("cdr expects a pair".into())),
-    }
+    println!();
+    Ok(ValuePtr::new(Value::Nil))
 }
 
 pub fn null_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
@@ -268,79 +288,10 @@ pub fn pair_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError>
     Ok(bool_value(matches!(value.as_ref(), Value::Pair(_, _))))
 }
 
-pub fn apply_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
-    if args.len() != 2 {
-        return Err(LispError::RuntimeError("apply requires 2 arguments".into()));
+pub fn print_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    for v in args {
+        println!("{}", v);
     }
-
-    let proc = args[0].clone();
-    let list_args = args[1].to_vec()?;
-    EvalEnv::apply_procedure(env, proc, list_args)
-}
-
-pub fn display_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
-    if args.len() != 1 {
-        return Err(LispError::RuntimeError("display requires 1 argument".into()));
-    }
-
-    match args[0].as_ref() {
-        Value::String(s) => print!("{}", s),
-        other => print!("{}", other),
-    }
-    Ok(ValuePtr::new(Value::Nil))
-}
-
-pub fn displayln_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
-    if args.len() != 1 {
-        return Err(LispError::RuntimeError("displayln requires 1 argument".into()));
-    }
-
-    display_proc(args, env)?;
-    newline_proc(Vec::new(), env)
-}
-
-pub fn error_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
-    let message = match args.as_slice() {
-        [] => "error".to_string(),
-        [value] => match value.as_ref() {
-            Value::String(s) => s.clone(),
-            other => other.to_string(),
-        },
-        _ => return Err(LispError::RuntimeError("error accepts at most 1 argument".into())),
-    };
-
-    Err(LispError::RuntimeError(message))
-}
-
-pub fn eval_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
-    if args.len() != 1 {
-        return Err(LispError::RuntimeError("eval requires 1 argument".into()));
-    }
-
-    EvalEnv::eval(env, args[0].clone())
-}
-
-pub fn exit_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
-    let code = match args.as_slice() {
-        [] => 0,
-        [value] => {
-            let number = value
-                .as_number()
-                .ok_or_else(|| LispError::RuntimeError("exit expects a number".into()))?;
-            number as i32
-        }
-        _ => return Err(LispError::RuntimeError("exit accepts at most 1 argument".into())),
-    };
-
-    Err(LispError::Exit(code))
-}
-
-pub fn newline_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
-    if !args.is_empty() {
-        return Err(LispError::RuntimeError("newline requires 0 arguments".into()));
-    }
-
-    println!();
     Ok(ValuePtr::new(Value::Nil))
 }
 
@@ -352,16 +303,51 @@ pub fn procedure_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispE
     )))
 }
 
-pub fn print_proc(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
-    for v in args {
-        println!("{}", v);
+pub fn reduce_proc(args: Vec<ValuePtr>, env: &EnvPtr) -> Result<ValuePtr, LispError> {
+    if args.len() != 2 {
+        return Err(LispError::RuntimeError("reduce requires 2 arguments".into()));
     }
-    Ok(ValuePtr::new(Value::Nil))
+
+    let proc = args[0].clone();
+    let items = args[1].to_vec()?;
+    if items.is_empty() {
+        return Err(LispError::RuntimeError("reduce requires a non-empty list".into()));
+    }
+    if items.len() == 1 {
+        return Ok(items[0].clone());
+    }
+
+    let first = items[0].clone();
+    let rest = list_from_vec(items[1..].to_vec());
+    let reduced_rest = reduce_proc(vec![proc.clone(), rest], env)?;
+    EvalEnv::apply_procedure(env, proc, vec![first, reduced_rest])
 }
 
 pub fn string_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
     let value = expect_one_arg("string?", &args)?;
     Ok(bool_value(matches!(value.as_ref(), Value::String(_))))
+}
+
+pub fn sub(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {
+    if args.is_empty() {
+        return Err(LispError::RuntimeError("- requires at least 1 argument".into()));
+    }
+
+    let first = args[0]
+        .as_number()
+        .ok_or_else(|| LispError::RuntimeError("Cannot sub non-number".into()))?;
+
+    if args.len() == 1 {
+        return Ok(ValuePtr::new(Value::Numeric(-first)));
+    }
+
+    let mut result = first;
+    for arg in &args[1..] {
+        result -= arg
+            .as_number()
+            .ok_or_else(|| LispError::RuntimeError("Cannot sub non-number".into()))?;
+    }
+    Ok(ValuePtr::new(Value::Numeric(result)))
 }
 
 pub fn symbol_pred(args: Vec<ValuePtr>, _: &EnvPtr) -> Result<ValuePtr, LispError> {

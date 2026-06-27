@@ -303,6 +303,28 @@ mod tests {
     }
 
     #[test]
+    fn test_list_construction_builtins() {
+        assert_eq!(
+            eval_str("(append '(1 2 3) '(a b c) '(foo bar baz))").unwrap(),
+            "(1 2 3 a b c foo bar baz)"
+        );
+        assert_eq!(eval_str("(append)").unwrap(), "()");
+        assert_eq!(eval_str("(car '(1 . 2))").unwrap(), "1");
+        assert_eq!(eval_str("(cons 1 '(2 3))").unwrap(), "(1 2 3)");
+        assert_eq!(eval_str("(list 1 2 3)").unwrap(), "(1 2 3)");
+    }
+
+    #[test]
+    fn test_map_filter_reduce() {
+        assert_eq!(eval_str("(map - '(1 2 3))").unwrap(), "(-1 -2 -3)");
+        assert_eq!(
+            eval_str("(filter (lambda (x) (> x 2)) '(1 2 3 4))").unwrap(),
+            "(3 4)"
+        );
+        assert_eq!(eval_str("(reduce * '(1 2 3 4))").unwrap(), "24");
+    }
+
+    #[test]
     fn test_type_predicates() {
         assert_eq!(eval_str("(atom? #t)").unwrap(), "#t");
         assert_eq!(eval_str("(atom? 'abc)").unwrap(), "#t");
