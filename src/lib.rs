@@ -12,4 +12,4 @@ pub use tokenizer::tokenize;
 pub use error::LispError;
 pub use value::{Value, ValuePtr};
 pub use parser::Parser;
-pub use eval_env::EvalEnv;
+pub use eval_env::{EnvPtr, EvalEnv};

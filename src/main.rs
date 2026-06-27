@@ -5,7 +5,7 @@ use mini_lisp_rs::{tokenize, EvalEnv, Parser};
 fn main() -> io::Result<()> {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
-    let mut env = EvalEnv::new();
+    let env = EvalEnv::new();
 
     loop {
         // Prompt
@@ -28,7 +28,7 @@ fn main() -> io::Result<()> {
             Ok(tokens) => {
                 let mut parser = Parser::new(tokens);
                 match parser.parse(){
-                    Ok(expr) => match env.eval(expr) {
+                    Ok(expr) => match EvalEnv::eval(&env, expr) {
                         Ok(value) => println!("{}", value),
                         Err(e) => eprintln!("Error: {}", e),
                     },

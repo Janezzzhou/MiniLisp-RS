@@ -1,5 +1,6 @@
-﻿use std::fmt;
 use crate::error::LispError;
+use crate::eval_env::EnvPtr;
+use std::fmt;
 
 pub type ValuePtr = std::rc::Rc<Value>;
 pub type BuiltinFunc = fn(Vec<ValuePtr>) -> Result<ValuePtr, LispError>;
@@ -16,6 +17,7 @@ pub enum Value {
     LambdaProc {
         params: Vec<String>,
         body: Vec<ValuePtr>,
+        env: EnvPtr,
     },
 }
 
@@ -32,9 +34,17 @@ impl PartialEq for Value {
             }
             (Value::BuiltinProc(a), Value::BuiltinProc(b)) => std::ptr::fn_addr_eq(*a, *b),
             (
-                Value::LambdaProc { params: a_params, body: a_body },
-                Value::LambdaProc { params: b_params, body: b_body },
-            ) => a_params == b_params && a_body == b_body,
+                Value::LambdaProc {
+                    params: a_params,
+                    body: a_body,
+                    env: a_env,
+                },
+                Value::LambdaProc {
+                    params: b_params,
+                    body: b_body,
+                    env: b_env,
+                },
+            ) => a_params == b_params && a_body == b_body && std::rc::Rc::ptr_eq(a_env, b_env),
             _ => false,
         }
     }
@@ -69,13 +79,12 @@ impl fmt::Display for Value {
             Value::Nil => write!(f, "()"),
             Value::Symbol(s) => write!(f, "{}", s),
             Value::Pair(car, cdr) => Value::fmt_pair(car, cdr, f),
-            Value::BuiltinProc(_) | Value::LambdaProc { .. } => {write!(f, "#<procedure>")}
+            Value::BuiltinProc(_) | Value::LambdaProc { .. } => write!(f, "#<procedure>"),
         }
     }
 }
 
 impl Value {
-    // 类型判断
     pub fn is_self_evaluating(&self) -> bool {
         matches!(
             self,
@@ -109,7 +118,6 @@ impl Value {
 }
 
 impl Value {
-    // 类型转换
     pub fn as_symbol(&self) -> Option<&str> {
         match self {
             Value::Symbol(s) => Some(s),
@@ -124,9 +132,11 @@ impl Value {
         }
     }
 
-    pub fn as_lambda_proc(&self) -> Option<(&[String], &[ValuePtr])> {
+    pub fn as_lambda_proc(&self) -> Option<(&[String], &[ValuePtr], EnvPtr)> {
         match self {
-            Value::LambdaProc { params, body } => Some((params.as_slice(), body.as_slice())),
+            Value::LambdaProc { params, body, env } => {
+                Some((params.as_slice(), body.as_slice(), env.clone()))
+            }
             _ => None,
         }
     }
@@ -138,7 +148,6 @@ impl Value {
         }
     }
 
-    // 列表操作：将 Proper List 转换为 Vec<ValuePtr>
     pub fn to_vec(&self) -> Result<Vec<ValuePtr>, LispError> {
         let mut result = Vec::new();
         let mut current = self;
@@ -151,7 +160,7 @@ impl Value {
                     current = cdr.as_ref();
                 }
                 _ => {
-                    return Err(LispError::RuntimeError("Malformed list.".into(),));
+                    return Err(LispError::RuntimeError("Malformed list.".into()));
                 }
             }
         }

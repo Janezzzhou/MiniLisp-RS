@@ -11,6 +11,11 @@ pub fn builtin_map() -> HashMap<String, ValuePtr> {
     );
 
     map.insert(
+        "-".into(),
+        ValuePtr::new(Value::BuiltinProc(sub)),
+    );
+
+    map.insert(
         "*".into(),
         ValuePtr::new(Value::BuiltinProc(mul)),
     );
@@ -46,6 +51,28 @@ pub fn add(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
             .ok_or_else(|| {LispError::RuntimeError("Cannot add non-number".into())})?;
     }
     Ok(ValuePtr::new(Value::Numeric(sum),))
+}
+
+pub fn sub(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
+    if args.is_empty() {
+        return Err(LispError::RuntimeError("- requires at least 1 argument".into()));
+    }
+
+    let first = args[0]
+        .as_number()
+        .ok_or_else(|| LispError::RuntimeError("Cannot sub non-number".into()))?;
+
+    if args.len() == 1 {
+        return Ok(ValuePtr::new(Value::Numeric(-first)));
+    }
+
+    let mut result = first;
+    for arg in &args[1..] {
+        result -= arg
+            .as_number()
+            .ok_or_else(|| LispError::RuntimeError("Cannot sub non-number".into()))?;
+    }
+    Ok(ValuePtr::new(Value::Numeric(result)))
 }
 
 pub fn mul(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
