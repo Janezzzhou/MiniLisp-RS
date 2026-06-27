@@ -11,6 +11,26 @@ pub fn builtin_map() -> HashMap<String, ValuePtr> {
     );
 
     map.insert(
+        "*".into(),
+        ValuePtr::new(Value::BuiltinProc(mul)),
+    );
+
+    map.insert(
+        ">".into(),
+        ValuePtr::new(Value::BuiltinProc(gt)),
+    );
+
+    map.insert(
+        "length".into(),
+        ValuePtr::new(Value::BuiltinProc(length)),
+    );
+
+    map.insert(
+        "cdr".into(),
+        ValuePtr::new(Value::BuiltinProc(cdr)),
+    );
+
+    map.insert(
         "print".into(),
         ValuePtr::new(Value::BuiltinProc(print_proc)),
     );
@@ -26,6 +46,51 @@ pub fn add(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
             .ok_or_else(|| {LispError::RuntimeError("Cannot add non-number".into())})?;
     }
     Ok(ValuePtr::new(Value::Numeric(sum),))
+}
+
+pub fn mul(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
+    let mut product = 1.0;
+    for arg in args {
+        product *= arg
+            .as_number()
+            .ok_or_else(|| {LispError::RuntimeError("Cannot mul non-number".into())})?;
+    }
+    Ok(ValuePtr::new(Value::Numeric(product),))
+}
+
+pub fn gt(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
+    if args.len() != 2 {
+        return Err(LispError::RuntimeError("> requires 2 arguments".into()));
+    }
+
+    let left = args[0]
+        .as_number()
+        .ok_or_else(|| LispError::RuntimeError("> expects numbers".into()))?;
+    let right = args[1]
+        .as_number()
+        .ok_or_else(|| LispError::RuntimeError("> expects numbers".into()))?;
+
+    Ok(ValuePtr::new(Value::Boolean(left > right)))
+}
+
+pub fn length(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
+    if args.len() != 1 {
+        return Err(LispError::RuntimeError("length requires 1 argument".into()));
+    }
+
+    let count = args[0].to_vec()?.len() as f64;
+    Ok(ValuePtr::new(Value::Numeric(count)))
+}
+
+pub fn cdr(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {
+    if args.len() != 1 {
+        return Err(LispError::RuntimeError("cdr requires 1 argument".into()));
+    }
+
+    match args[0].as_ref() {
+        Value::Pair(_, cdr) => Ok(cdr.clone()),
+        _ => Err(LispError::RuntimeError("cdr expects a pair".into())),
+    }
 }
 
 pub fn print_proc(args: Vec<ValuePtr>,) -> Result<ValuePtr, LispError> {

@@ -7,6 +7,7 @@ pub type SpecialFormFunc = fn(&[ValuePtr], &mut EvalEnv) -> Result<ValuePtr, Lis
 pub fn lookup_special_form(name: &str,) -> Option<SpecialFormFunc> {
     match name {
         "define" => Some(define_form),
+        "lambda" => Some(lambda_form),
         "quote" => Some(quote_form),
         "if" => Some(if_form),
         "and" => Some(and_form),
@@ -16,19 +17,73 @@ pub fn lookup_special_form(name: &str,) -> Option<SpecialFormFunc> {
 }
 
 pub fn define_form(args: &[ValuePtr], env: &mut EvalEnv,) -> Result<ValuePtr, LispError> {
-    if args.len() != 2 {
-        return Err(LispError::RuntimeError("define requires 2 arguments".into()));
+    if args.len() < 2 {
+        return Err(LispError::RuntimeError("define requires at least 2 arguments".into()));
     }
 
-    let name = args[0]
-        .as_symbol()
-        .ok_or_else(|| {
-            LispError::RuntimeError("define first arg must be symbol".into())
-        })?;
+    if let Some(name) = args[0].as_symbol() {
+        if args.len() != 2 {
+            return Err(LispError::RuntimeError("define variable form requires 2 arguments".into()));
+        }
 
-    let value = env.eval(args[1].clone())?;
-    env.define(name.to_string(), value);
+        let value = env.eval(args[1].clone())?;
+        env.define(name.to_string(), value);
+        return Ok(ValuePtr::new(Value::Nil));
+    }
+
+    let signature = args[0]
+        .to_vec()
+        .map_err(|_| LispError::RuntimeError("define function signature must be a proper list".into()))?;
+
+    if signature.is_empty() {
+        return Err(LispError::RuntimeError("define function signature cannot be empty".into()));
+    }
+
+    let name = signature[0]
+        .as_symbol()
+        .ok_or_else(|| LispError::RuntimeError("define function name must be symbol".into()))?;
+
+    let params = signature[1..]
+        .iter()
+        .map(|param| {
+            param
+                .as_symbol()
+                .map(str::to_string)
+                .ok_or_else(|| LispError::RuntimeError("lambda parameters must be symbols".into()))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let body = args[1..].to_vec();
+    if body.is_empty() {
+        return Err(LispError::RuntimeError("define function body cannot be empty".into()));
+    }
+
+    env.define(
+        name.to_string(),
+        ValuePtr::new(Value::LambdaProc { params, body }),
+    );
     Ok(ValuePtr::new(Value::Nil))
+}
+
+pub fn lambda_form(args: &[ValuePtr], _: &mut EvalEnv,) -> Result<ValuePtr, LispError> {
+    if args.len() < 2 {
+        return Err(LispError::RuntimeError("lambda requires parameters and body".into()));
+    }
+
+    let params = args[0]
+        .to_vec()
+        .map_err(|_| LispError::RuntimeError("lambda parameter list must be a proper list".into()))?
+        .into_iter()
+        .map(|param| {
+            param
+                .as_symbol()
+                .map(str::to_string)
+                .ok_or_else(|| LispError::RuntimeError("lambda parameters must be symbols".into()))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let body = args[1..].to_vec();
+    Ok(ValuePtr::new(Value::LambdaProc { params, body }))
 }
 
 pub fn quote_form(args: &[ValuePtr], _: &mut EvalEnv,) -> Result<ValuePtr, LispError> {

@@ -13,6 +13,10 @@ pub enum Value {
     Symbol(String),
     Pair(ValuePtr, ValuePtr),
     BuiltinProc(BuiltinFunc),
+    LambdaProc {
+        params: Vec<String>,
+        body: Vec<ValuePtr>,
+    },
 }
 
 impl PartialEq for Value {
@@ -27,6 +31,10 @@ impl PartialEq for Value {
                 a_car == b_car && a_cdr == b_cdr
             }
             (Value::BuiltinProc(a), Value::BuiltinProc(b)) => std::ptr::fn_addr_eq(*a, *b),
+            (
+                Value::LambdaProc { params: a_params, body: a_body },
+                Value::LambdaProc { params: b_params, body: b_body },
+            ) => a_params == b_params && a_body == b_body,
             _ => false,
         }
     }
@@ -61,7 +69,7 @@ impl fmt::Display for Value {
             Value::Nil => write!(f, "()"),
             Value::Symbol(s) => write!(f, "{}", s),
             Value::Pair(car, cdr) => Value::fmt_pair(car, cdr, f),
-            Value::BuiltinProc(_) => {write!(f, "#<procedure>")}
+            Value::BuiltinProc(_) | Value::LambdaProc { .. } => {write!(f, "#<procedure>")}
         }
     }
 }
@@ -69,7 +77,14 @@ impl fmt::Display for Value {
 impl Value {
     // 类型判断
     pub fn is_self_evaluating(&self) -> bool {
-        matches!(self, Value::Boolean(_) | Value::Numeric(_) | Value::String(_) | Value::BuiltinProc(_)) 
+        matches!(
+            self,
+            Value::Boolean(_)
+                | Value::Numeric(_)
+                | Value::String(_)
+                | Value::BuiltinProc(_)
+                | Value::LambdaProc { .. }
+        )
     }
 
     pub fn is_nil(&self) -> bool {
@@ -105,6 +120,13 @@ impl Value {
     pub fn as_builtin_proc(&self) -> Option<BuiltinFunc> {
         match self {
             Value::BuiltinProc(f) => Some(*f),
+            _ => None,
+        }
+    }
+
+    pub fn as_lambda_proc(&self) -> Option<(&[String], &[ValuePtr])> {
+        match self {
+            Value::LambdaProc { params, body } => Some((params.as_slice(), body.as_slice())),
             _ => None,
         }
     }

@@ -65,7 +65,33 @@ impl EvalEnv {
         if let Some(f) = proc.as_builtin_proc() {
             return f(args);
         }
-        Err(LispError::RuntimeError("Unimplemented".into()))
+
+        if let Some((params, body)) = proc.as_lambda_proc() {
+            if params.len() != args.len() {
+                return Err(LispError::RuntimeError(format!(
+                    "Expected {} arguments, got {}",
+                    params.len(),
+                    args.len()
+                )));
+            }
+
+            let mut local_symbols = self.symbols.clone();
+            for (param, arg) in params.iter().zip(args.into_iter()) {
+                local_symbols.insert(param.clone(), arg);
+            }
+
+            let mut local_env = EvalEnv {
+                symbols: local_symbols,
+            };
+
+            let mut last = ValuePtr::new(crate::value::Value::Nil);
+            for expr in body {
+                last = local_env.eval(expr.clone())?;
+            }
+            return Ok(last);
+        }
+
+        Err(LispError::RuntimeError("Attempted to call a non-procedure value".into()))
     }
 
     pub fn define(&mut self, name: String, value: ValuePtr,) {
@@ -177,6 +203,75 @@ mod tests {
         assert_eq!(eval_in_env(&mut env, "(add 1 2 3)").unwrap(), "6");
         // 继续使用原 + 也正常
         assert_eq!(eval_in_env(&mut env, "(+ 10 20)").unwrap(), "30");
+    }
+
+    #[test]
+    fn test_lambda_literal_application() {
+        assert_eq!(eval_str("((lambda (x y) (+ x y)) 3 4)").unwrap(), "7");
+    }
+
+    #[test]
+    fn test_define_function_sugar() {
+        let mut env = EvalEnv::new();
+
+        assert_eq!(eval_in_env(&mut env, "(define (add2 x y) (+ x y))").unwrap(), "()");
+        assert_eq!(eval_in_env(&mut env, "(add2 10 32)").unwrap(), "42");
+    }
+
+    #[test]
+    fn test_define_function_with_multiple_body_expressions() {
+        let mut env = EvalEnv::new();
+
+        assert_eq!(eval_in_env(&mut env, "(define (show-and-return x) (print x) (+ x 1))").unwrap(), "()");
+        assert_eq!(eval_in_env(&mut env, "(show-and-return 4)").unwrap(), "5");
+    }
+
+    // 5.3 的测试（false 绑定、空 or、lambda 值与函数定义）
+    #[test]
+    fn test_false_binding_with_if_and_short_circuit() {
+        let mut env = EvalEnv::new();
+
+        assert_eq!(eval_in_env(&mut env, "(define false #f)").unwrap(), "()");
+        assert_eq!(eval_in_env(&mut env, "(if false \"OK\" \"Emm\")").unwrap(), "\"Emm\"");
+        assert_eq!(eval_in_env(&mut env, "(and false (print \"Don't print\"))").unwrap(), "#f");
+    }
+
+    #[test]
+    fn test_empty_or_returns_false() {
+        assert_eq!(eval_str("(or)").unwrap(), "#f");
+    }
+
+    #[test]
+    fn test_lambda_evaluates_to_procedure() {
+        assert_eq!(eval_str("(lambda (x) (+ x x))").unwrap(), "#<procedure>");
+    }
+
+    #[test]
+    fn test_defined_function_evaluates_to_procedure_and_applies() {
+        let mut env = EvalEnv::new();
+
+        assert_eq!(eval_in_env(&mut env, "(define (double x) (+ x x))").unwrap(), "()");
+        assert_eq!(eval_in_env(&mut env, "double").unwrap(), "#<procedure>");
+        assert_eq!(eval_in_env(&mut env, "(double 3.14)").unwrap(), "6.28");
+    }
+
+    // 5.4 的测试（比较、列表长度与 cdr）
+    #[test]
+    fn test_builtin_gt() {
+        assert_eq!(eval_str("(if (> 3 2) \"Correct\" \"Bad\")").unwrap(), "\"Correct\"");
+        assert_eq!(eval_str("(> 2 3)").unwrap(), "#f");
+    }
+
+    #[test]
+    fn test_builtin_length() {
+        assert_eq!(eval_str("(length '(1 2 3 4))").unwrap(), "4");
+        assert_eq!(eval_str("(length '())").unwrap(), "0");
+    }
+
+    #[test]
+    fn test_builtin_cdr() {
+        assert_eq!(eval_str("(cdr '(1 . 2))").unwrap(), "2");
+        assert_eq!(eval_str("(cdr '(1 2 3))").unwrap(), "(2 3)");
     }
 
     #[test]
