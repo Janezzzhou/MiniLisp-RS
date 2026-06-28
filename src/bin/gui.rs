@@ -35,13 +35,16 @@ struct GuiApp {
     theme: GuiTheme,
     input_cursor_index: Option<usize>,
     show_clear_input_dialog: bool,
+    show_doc_window: bool,
+    special_forms: Vec<(String, String)>,
+    builtins: Vec<(String, String)>,
 }
 
 impl GuiApp {
     /// Build the app state and apply the shared theme once at startup.
     fn new(cc: &eframe::CreationContext<'_>, theme: GuiTheme) -> Self {
         apply_theme(&cc.egui_ctx, &theme);
-
+        let (special_forms, builtins) = Self::generate_documentation();
         Self {
             input: "".to_string(),
             output: "MiniLisp-RS GUI\nType Lisp code and click Run.\n".to_string(),
@@ -49,7 +52,81 @@ impl GuiApp {
             theme,
             input_cursor_index: None,
             show_clear_input_dialog: false,
+            show_doc_window: false,
+            special_forms,
+            builtins,
         }
+    }
+
+    fn generate_documentation() -> (Vec<(String, String)>, Vec<(String, String)>) {
+        let special_forms = vec![
+            ("begin".into(), "Evaluate expressions in sequence, return last value."),
+            ("cond".into(), "Conditional: each clause is (test expr...), else clause optional."),
+            ("define".into(), "Define variable or function: (define name value) or (define (func params) body)."),
+            ("lambda".into(), "Create anonymous function: (lambda (params) body)."),
+            ("let".into(), "Local bindings: (let ((var expr) ...) body ...)."),
+            ("quasiquote".into(), "Quasiquote with unquote splicing."),
+            ("quote".into(), "Return expression unevaluated."),
+            ("if".into(), "Conditional: (if test then else)."),
+            ("and".into(), "Logical AND, short-circuit."),
+            ("or".into(), "Logical OR, short-circuit."),
+        ]
+            .into_iter()
+            .map(|(name, desc): (&str, &str)| (name.to_string(), desc.to_string()))
+            .collect();
+        let builtins = vec![
+            ("append", "list ... - Concatenate lists."),
+            ("abs", "number - Absolute value."),
+            ("apply", "proc list - Apply procedure to list of arguments."),
+            ("atom?", "obj - Check if object is atom (not pair)."),
+            ("boolean?", "obj - Check if boolean."),
+            ("car", "pair - Return first element of pair."),
+            ("cdr", "pair - Return rest of pair."),
+            ("cons", "obj1 obj2 - Construct pair."),
+            ("display", "obj - Print object (string without quotes)."),
+            ("displayln", "obj - Print object with newline."),
+            ("eq?", "obj1 obj2 - Compare by identity (pointer)."),
+            ("equal?", "obj1 obj2 - Structural equality."),
+            ("error", "message - Signal error."),
+            ("even?", "number - Check if even integer."),
+            ("eval", "expr - Evaluate expression in current environment."),
+            ("expt", "base exp - Exponentiation."),
+            ("exit", "code - Exit interpreter with code."),
+            ("filter", "pred list - Return list of elements satisfying pred."),
+            ("integer?", "obj - Check if integer."),
+            ("length", "list - Return length of list."),
+            ("list", "obj ... - Create list."),
+            ("list?", "obj - Check if proper list."),
+            ("map", "proc list - Apply proc to each element and return list."),
+            ("newline", " - Print newline."),
+            ("not", "obj - Logical NOT."),
+            ("null?", "obj - Check if empty list."),
+            ("number?", "obj - Check if number."),
+            ("odd?", "number - Check if odd integer."),
+            ("pair?", "obj - Check if pair."),
+            ("print", "obj ... - Print objects with newline."),
+            ("procedure?", "obj - Check if procedure."),
+            ("quotient", "dividend divisor - Integer division (truncate toward zero)."),
+            ("reduce", "proc list - Reduce list using binary proc."),
+            ("remainder", "dividend divisor - Remainder of division."),
+            ("string?", "obj - Check if string."),
+            ("symbol?", "obj - Check if symbol."),
+            ("zero?", "number - Check if zero."),
+            ("+", "num ... - Sum numbers."),
+            ("-", "num ... - Subtract numbers (unary negate or binary)."),
+            ("*", "num ... - Multiply numbers."),
+            ("/", "num divisor or numerator denominator - Division."),
+            ("=", "num1 num2 - Numeric equality."),
+            ("<", "num1 num2 - Less than."),
+            ("<=", "num1 num2 - Less or equal."),
+            ("modulo", "dividend divisor - Modulo (result has same sign as divisor)."),
+            (">", "num1 num2 - Greater than."),
+            (">=", "num1 num2 - Greater or equal."),
+        ]
+            .into_iter()
+            .map(|(name, desc): (&str, &str)| (name.to_string(), desc.to_string()))
+            .collect();
+        (special_forms, builtins)
     }
 
     /// Run the current input buffer and append output to the right panel.
@@ -155,6 +232,13 @@ impl eframe::App for GuiApp {
                         self.show_clear_input_dialog = true;
                     }
 
+                    if ui
+                        .add_sized(self.theme.button_size, egui::Button::new("Reference"))
+                        .clicked()
+                    {
+                        self.show_doc_window = true;
+                    }
+
                     ui.label(
                         egui::RichText::new("Ctrl+Enter runs the current input")
                             .size(self.theme.body_font_size)
@@ -252,5 +336,45 @@ impl eframe::App for GuiApp {
                     });
                 });
         }
+
+        egui::Window::new("Built-in Functions and Special Forms")
+            .open(&mut self.show_doc_window)
+            .default_size([600.0, 500.0])
+            .resizable(true)
+            .show(ui.ctx(), |ui| {
+                //ui.heading("Documentation");
+                //ui.separator();
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false; 2])
+                    .show(ui, |ui| {
+                        // ------ Quick Examples ------
+                        ui.label(egui::RichText::new("Quick Examples").size(16.0));
+                        ui.add_space(4.0);
+                        ui.label(egui::RichText::new("(define (square x) (* x x))").monospace());
+                        ui.label(egui::RichText::new("(square 5)  ; => 25").monospace());
+                        ui.add_space(2.0);
+                        ui.label(egui::RichText::new("(map square (list 1 2 3 4 5))  ; => (1 4 9 16 25)").monospace());
+                        ui.add_space(2.0);
+                        ui.label(egui::RichText::new("(let ((x 10) (y 20)) (+ x y))  ; => 30").monospace());
+                        ui.add_space(2.0);
+                        ui.label(egui::RichText::new("(cond ((> 3 2) \"yes\") (else \"no\"))  ; => \"yes\"").monospace());
+                        ui.add_space(8.0);
+                        ui.separator();
+                        ui.add_space(8.0);
+                        ui.label(egui::RichText::new("Special Forms").size(16.0));
+                        ui.add_space(4.0);
+                        for (name, desc) in &self.special_forms {
+                            ui.label(format!("{} - {}", name, desc));
+                        }
+                        ui.add_space(8.0);
+
+                        // 渲染 Builtins
+                        ui.label(egui::RichText::new("Built-in Procedures").size(16.0));
+                        ui.add_space(4.0);
+                        for (name, desc) in &self.builtins {
+                            ui.label(format!("{} {}", name, desc));
+                        }
+                    });
+            });
     }
 }
