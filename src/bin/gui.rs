@@ -34,6 +34,7 @@ struct GuiApp {
     env: EnvPtr,
     theme: GuiTheme,
     input_cursor_index: Option<usize>,
+    show_clear_input_dialog: bool,
 }
 
 impl GuiApp {
@@ -47,6 +48,7 @@ impl GuiApp {
             env: EvalEnv::new(),
             theme,
             input_cursor_index: None,
+            show_clear_input_dialog: false,
         }
     }
 
@@ -146,6 +148,13 @@ impl eframe::App for GuiApp {
                         self.reset_env();
                     }
 
+                    if ui
+                        .add_sized(self.theme.button_size, egui::Button::new("Clear Input"))
+                        .clicked()
+                    {
+                        self.show_clear_input_dialog = true;
+                    }
+
                     ui.label(
                         egui::RichText::new("Ctrl+Enter runs the current input")
                             .size(self.theme.body_font_size)
@@ -222,6 +231,26 @@ impl eframe::App for GuiApp {
 
         if run_shortcut {
             self.run_current_input();
+        }
+
+        if self.show_clear_input_dialog {
+            egui::Window::new("Confirm Clear Input")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                .show(ui.ctx(), |ui: &mut egui::Ui| {
+                    ui.label("Are you sure you want to clear all input content?");
+                    ui.add_space(10.0);
+                    ui.horizontal(|ui: &mut egui::Ui| {
+                        if ui.button("Yes").clicked() {
+                            self.input.clear();
+                            self.show_clear_input_dialog = false;
+                        }
+                        if ui.button("No").clicked() {
+                            self.show_clear_input_dialog = false;
+                        }
+                    });
+                });
         }
     }
 }

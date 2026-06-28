@@ -47,7 +47,7 @@ pub fn default_theme() -> GuiTheme {
         title_font_size: 22.0,
         body_font_size: 16.0,
         editor_font_size: 16.0,
-        editor_rows: 28,
+        editor_rows: 25,
         background_fill: egui::Color32::from_rgb(242, 239, 233),
         panel_fill: egui::Color32::from_rgb(252, 250, 246),
         panel_stroke: egui::Stroke::new(1.0, egui::Color32::from_rgb(203, 195, 184)),

@@ -38,25 +38,21 @@ cargo run --bin mini_lisp_rs  sort_test1.scm
 
 ### 运行 GUI 版本
 
-启动 GUI：
-
-```bash
-cargo run --release --bin gui
-```
-
 构建 release 可执行文件：
 
 ```bash
 cargo build --release --bin gui
 ```
 
-生成的可执行文件位置为：
+生成的可执行文件位置为：`target/release/gui.exe`
 
-```text
-target/release/gui.exe
+启动 GUI：
+
+```bash
+cargo run --release --bin gui
 ```
 
-在 Windows 上你可以直接双击 `gui.exe` 打开图形界面。
+或在 Windows 上你可以直接双击 `gui.exe` 打开图形界面。
 
 如果无法启动，可尝试：
 
