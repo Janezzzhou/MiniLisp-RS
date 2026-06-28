@@ -106,6 +106,10 @@ impl eframe::App for GuiApp {
                 self.theme.panel_padding[1] as i8,
             ));
 
+        let editor_frame = egui::Frame::new()
+            .stroke(self.theme.panel_stroke)
+            .inner_margin(egui::Margin::same(4));
+
         frame.show(ui, |ui| {
             ui.vertical(|ui| {
                 ui.heading(
@@ -178,6 +182,7 @@ impl eframe::App for GuiApp {
                                 .desired_rows(self.theme.editor_rows)
                                 .background_color(self.theme.editor_fill)
                                 .hint_text("Type Lisp code here")
+                                .frame(editor_frame.clone())
                                 .show(ui)
                         })
                         .inner;
@@ -196,10 +201,11 @@ impl eframe::App for GuiApp {
                     columns[1].scope_builder(egui::UiBuilder::new().max_rect(output_rect), |ui| {
                         egui::TextEdit::multiline(&mut self.output)
                             .code_editor()
-                            .desired_rows(self.theme.editor_rows)
+                            //.desired_rows(self.theme.editor_rows)
                             .background_color(self.theme.editor_fill)
                             .font(egui::FontId::monospace(self.theme.editor_font_size))
                             .interactive(false)
+                            .frame(editor_frame.clone())
                             .show(ui);
                     });
                 });
