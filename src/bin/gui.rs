@@ -42,8 +42,8 @@ impl GuiApp {
         apply_theme(&cc.egui_ctx, &theme);
 
         Self {
-            input: "(define (square x) (* x x))\n(square 12)".to_string(),
-            output: "MiniLisp-RS GUI\nType Lisp code and click Run.\n\n".to_string(),
+            input: "".to_string(),
+            output: "MiniLisp-RS GUI\nType Lisp code and click Run.\n".to_string(),
             env: EvalEnv::new(),
             theme,
             input_cursor_index: None,
@@ -174,21 +174,24 @@ impl eframe::App for GuiApp {
                         columns[0].cursor().min,
                         egui::vec2(columns[0].available_width(), columns[0].available_height()),
                     );
-                    let input_output = columns[0]
-                        .scope_builder(egui::UiBuilder::new().max_rect(input_rect), |ui| {
-                            egui::TextEdit::multiline(&mut self.input)
-                                .layouter(&mut layouter)
-                                .code_editor()
-                                .desired_rows(self.theme.editor_rows)
-                                .background_color(self.theme.editor_fill)
-                                .hint_text("Type Lisp code here")
-                                .frame(editor_frame.clone())
-                                .show(ui)
-                        })
-                        .inner;
-                    self.input_cursor_index =
-                        input_output.cursor_range.map(|cursor_range| cursor_range.primary.index.0);
-
+                    let mut input_output = None;
+                    columns[0].scope_builder(egui::UiBuilder::new().max_rect(input_rect), |ui| {
+                        egui::ScrollArea::vertical()
+                            .id_salt("input_scroll")
+                            .auto_shrink([false; 2])  // 内容少也不收缩，保持填满
+                            .show(ui, |ui| {
+                                let resp = egui::TextEdit::multiline(&mut self.input)
+                                    .layouter(&mut layouter)
+                                    .code_editor()
+                                    .desired_rows(self.theme.editor_rows)
+                                    .background_color(self.theme.editor_fill)
+                                    .hint_text(egui::RichText::new("Type Lisp code here").size(18.0))
+                                    .frame(editor_frame.clone())
+                                    .show(ui);
+                                input_output = Some(resp);
+                            });
+                    });
+                    self.input_cursor_index = input_output.and_then(|out| out.cursor_range.map(|cr| cr.primary.index.0));
                     columns[1].heading(
                         egui::RichText::new("Output")
                             .size(self.theme.body_font_size)
@@ -199,14 +202,19 @@ impl eframe::App for GuiApp {
                         egui::vec2(columns[1].available_width(), columns[1].available_height()),
                     );
                     columns[1].scope_builder(egui::UiBuilder::new().max_rect(output_rect), |ui| {
-                        egui::TextEdit::multiline(&mut self.output)
-                            .code_editor()
-                            //.desired_rows(self.theme.editor_rows)
-                            .background_color(self.theme.editor_fill)
-                            .font(egui::FontId::monospace(self.theme.editor_font_size))
-                            .interactive(false)
-                            .frame(editor_frame.clone())
-                            .show(ui);
+                        egui::ScrollArea::vertical()
+                            .id_salt("output_scroll")
+                            .auto_shrink([false; 2])
+                            .show(ui, |ui| {
+                                ui.add(
+                                    egui::TextEdit::multiline(&mut self.output)
+                                        .code_editor()
+                                        .background_color(self.theme.editor_fill)
+                                        .font(egui::FontId::monospace(self.theme.editor_font_size))
+                                        .interactive(false)
+                                        .frame(editor_frame.clone())
+                                );
+                            });
                     });
                 });
             });
