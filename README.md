@@ -25,13 +25,13 @@ MiniLisp-RS 目前支持：
 启动 REPL：
 
 ```bash
-cargo run
+cargo run --bin mini_lisp_rs
 ```
 
 运行一个 Scheme/Lisp 文件：
 
 ```bash
-cargo run -- sort_test1.scm
+cargo run --bin mini_lisp_rs  sort_test1.scm
 ```
 
 在 Windows 上，可以按 `Ctrl+Z` 再按回车结束终端输入。
@@ -41,7 +41,7 @@ cargo run -- sort_test1.scm
 启动 GUI：
 
 ```bash
-cargo run --bin gui
+cargo run --release --bin gui
 ```
 
 构建 release 可执行文件：
@@ -57,6 +57,12 @@ target/release/gui.exe
 ```
 
 在 Windows 上你可以直接双击 `gui.exe` 打开图形界面。
+
+如果无法启动，可尝试：
+
+```bash
+$env:WGPU_BACKEND="dx12"; cargo run --release --bin gui
+```
 
 ### GUI 使用说明
 
