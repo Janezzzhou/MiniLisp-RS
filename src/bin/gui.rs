@@ -359,6 +359,7 @@ impl eframe::App for GuiApp {
                         ui.add_space(2.0);
                         ui.label(egui::RichText::new("(cond ((> 3 2) \"yes\") (else \"no\"))  ; => \"yes\"").monospace());
                         ui.add_space(8.0);
+                        
                         ui.separator();
                         ui.add_space(8.0);
                         ui.label(egui::RichText::new("Special Forms").size(16.0));
@@ -368,7 +369,8 @@ impl eframe::App for GuiApp {
                         }
                         ui.add_space(8.0);
 
-                        // 渲染 Builtins
+                        ui.separator();
+                        ui.add_space(8.0);
                         ui.label(egui::RichText::new("Built-in Procedures").size(16.0));
                         ui.add_space(4.0);
                         for (name, desc) in &self.builtins {
