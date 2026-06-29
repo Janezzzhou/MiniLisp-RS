@@ -1,0 +1,340 @@
+\documentclass[12pt, a4paper]{ctexart}
+
+% --- 宏包引入 ---
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{left=2.5cm, right=2.5cm, top=3cm, bottom=3cm}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{setspace}
+\usepackage{booktabs} % 用于表格
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{fontawesome5}
+
+% --- 样式设置 ---
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    filecolor=blue,      
+    urlcolor=blue,
+    citecolor=black,
+}
+
+% 设置页眉页脚 (仿照 Report.pdf)
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Music and Mathematics}
+\fancyhead[R]{2025Fall}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% 设置行间距
+\linespread{1.5}
+
+% --- 文档开始 ---
+\begin{document}
+
+% --- 封面 (仿照 Report.pdf 布局) ---
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    {\Huge \bfseries Rust程序设计课程项目报告 \par}
+    \vspace{1cm}
+    {\Large \bfseries Mini-Lisp 解释器实现 \par}
+    
+    \vspace{3cm}
+    
+    \begin{spacing}{1.5}
+    \large
+    \begin{tabular}{llc}
+        成员: & 周静怡 & 2400013056 \\
+              & 王嘉怡 & 2400013107 \\
+    \end{tabular}
+    \end{spacing}
+
+    \vfill
+    {\large Rust程序设计 (春季, 2026) \par}
+    {\large 北京大学 \par}
+    {\large 2026年6月29日 \par}
+\end{titlepage}
+
+% --- 目录 ---
+\newpage
+\tableofcontents
+\newpage
+
+% --- 正文内容 ---
+
+\section{引言}
+\subsection{研究背景}
+机器作曲是利用计算机算法生成音乐作品的一种方法，其核心思想是通过程序模拟作曲过程，实现音乐创作的自动化或半自动化。算法作曲作为机器作曲的一种实现方式，通过数学模型和计算方法对旋律、节奏、和声等音乐要素进行编码和操作，从而生成具有一定音乐性的旋律片段。遗传算法作为一种基于自然选择和生物进化机制的搜索算法，能够在复杂的解空间中探索和优化解，具有全局搜索能力和适应性强的特点，这使其在音乐生成中具有明显优势。通过遗传算法，可以将旋律视为可操作的个体，在种群中进行交叉、变异以及各种音乐变换，使旋律不断进化，从而产生新的、有音乐特征的片段。
+
+
+\subsection{选题任务简述}
+\begin{enumerate}
+    \item 采用从同节拍歌曲乐曲中选取和随机产生其一的方式，生成10-20个长度相等的片段。
+    \item 在软件平台实现遗传算法，遗传操作应包括交叉, 变异以及对旋律进行的移调、倒影、逆行变换等。
+    \item 探索建立适应度函数, 指导旋律进化的方向。
+    \item 把初始种群作为遗传算法的输入, 对其进行遗传迭代, 看是否能够得到较好的音乐片段。
+    \item 形成真实、客观、准确描述研究过程及结果的实验报告，并着重讨论适应度函数的选取对最终产生旋律的音乐特性之间的联系，以及对算法本身效率的影响。
+\end{enumerate}
+
+\section{旋律表示与初始种群}
+\subsection{旋律表示}
+在本实验中，旋律被表示为一个音符序列，每个音符由音高（pitch）和时值（duration）组成。其中，音高采用 MIDI 音高编号表示，时值以四分音符为 1.0 的单位进行归一化表示。
+
+为保证旋律结构的统一性，实验中固定使用 4/4 拍、4 小节的旋律长度，并将旋律统一量化为 1/8 音符的时间步长。需要说明的是，在编码旋律的过程中我们去掉了休止符，并用上一音高延长相应时值，也即我们不再区分停顿和延音，这一方面是为了简化和对齐，另一方面也避免了“空位”遗传导致的节奏断裂或无声，音乐性急剧下降的坏个体。此外，为了减少对后续交换的干扰，我们避免极高和极低音高的出现，将其限制到合理范围[C2, C6]内。
+
+每个旋律个体最终被表示为 $32 \times 2$ 的列表，即：
+\begin{equation}
+\text{Individual} = \big[ [p_1, d_1],\, [p_2, d_2],\, \ldots,\, [p_{32}, d_{32}] \big] \label{eq:format}
+\end{equation}
+其中，$p_i$ 表示第 $i$ 个音符的 MIDI 音高值，$d_i$ 表示对应的时值。在本实验设置中，所有音符的时值均为固定的 $d_i = 0.5$，即 1/8 音符。
+
+\subsection{初始种群生成}
+初始种群的生成采取采样法，以获得符合乐理的真实音乐片段，利于算法收敛。本研究利用 MuseScore 平台及软件制作并导出了 MIDI 格式的音乐数据。实验初期共收集了 20 条音乐风格不一的单声部旋律，随后为强化风格标签的分类特征，样本量扩充至 38 条。初始种群中典型旋律片段如图\ref{fig:score1}所示。所有旋律样本按风格划分为 pop、classical、jazz 及 random 四类，并对应存储于 \verb|music_data/| 下的同名子目录中。其中，\verb|/random| 目录作为全集包含所有样本，代表混合风格分布；其余三种风格目录则根据特征归属存在部分样本重叠。
+
+\begin{figure}[htbp]
+    \centering % 图片居中
+    \includegraphics[width=0.8\textwidth]{figure/score1.png}
+    \caption{初始种群的单声部旋律采样示例} % 图片下方的文字
+    \label{fig:score1} % 用于文中引用
+\end{figure}
+
+实验首先尝试从指定目录中读取若干 MIDI 音乐片段，片段数量可以即时调整。并利用 \verb|music21| 库解析其旋律信息，仅保留单声部旋律作为个体。解析得到的旋律会按照\eqref{eq:format}所示的格式编码成音列表。如果指定目录下的 MIDI 片段不够，则从已有片段中随机复制填充。若由于环境或数据原因无法成功读取 MIDI 文件，则算法退化为在给定音阶内随机生成旋律，以确保实验流程的可执行性。
+
+
+\section{遗传算法设计}
+\subsection{遗传操作}
+按照任务要求，我们实现了以下遗传操作：
+\begin{itemize}
+    \item \textbf{交叉 (Crossover)}：采用单点交叉。随机选择一个小节内的拍位作为切点，把两个父代片段组合。
+    \item \textbf{变异 (Mutation)}：随机调整一个音符的音高或节奏，引入微小变化。我们采用70\%概率产生音高变异（即在附近音程内随机偏移$1 \sim 3$个音高步长），以及30\%概率产生节奏变异（即随机选择0.5/1/2步长修改音符时值长度）。我们使用 \verb|mutation_rate| 控制变异概率。
+    \item \textbf{音乐变换}：
+    为了增加旋律多样性，对旋律 $\mathbf{x} = [x_1, x_2, \dots, x_n]$进行以下变换：
+    \begin{itemize}
+        \item \textbf{移调（Transpose）}：整体音高增加$\Delta$：
+            \begin{equation}
+                x_i' = x_i + \Delta, \quad i = 1, 2, \dots, n \label{eq:trans}
+            \end{equation}
+其中，$\Delta$ 代表移调的半音数，为(-5, 5)范围内的随机整数。
+        \item \textbf{倒影（Inversion）}：以中心音$c$为轴，反转每个音符到中心音的间隔：
+            \begin{equation}
+               x_i' = c - (x_i - c) = 2c - x_i, \quad i = 1,2,\dots,n
+                \label{eq:inver}
+            \end{equation}
+        \item \textbf{逆行（Retrograde）}：将旋律完全倒序，保留原有时值结构：
+            \begin{equation}
+               \mathbf{x}' = [x_n, x_{n-1}, \dots, x_1]
+                \label{eq:retro}
+            \end{equation} 
+        \item \textbf{倒影逆行}：先倒影再逆行：
+            \begin{equation}
+                x_i' = 2c - x_{n-i+1}, \quad i = 1,2,\dots,n
+                \label{eq:invre}
+            \end{equation} 
+    \end{itemize}
+    在遗传操作后后我们仍然对音高做合理阈值的限制，以避免极高或极低的不悦耳音出现。
+\end{itemize}
+
+\subsection{选择策略}
+在遗传算法的迭代过程中，选择操作旨在从当前种群中筛选出优良个体，以保留其优秀的遗传基因至下一代。本项目采用了基于适应度比例的选择策略，即轮盘赌选择法。其具体的逻辑描述与数学实现如下：
+\begin{enumerate}
+    \item \textbf{适应度平移与正则化} \mbox{} \\
+由于原始适应度函数生成的得分可能存在极端低分，为了确保选择过程的随机性与稳健性，首先对适应度分布进行平移处理。
+定义当前种群中第 $i$ 个个体的原始适应度为 $f_i$，种群最小适应度为 $f_{min}$。我们引入一个微小的偏置量 $\epsilon = 10^{-6}$，计算平移后的适应度 $f'_i$：
+    \begin{equation}
+        f'_i = f_i - f_{min} + \epsilon \label{eq:adapt}
+    \end{equation}
+该操作的目的是消除非正得分的影响，确保所有个体均有被选中的理论概率。
+
+    \item \textbf{概率分布计算} \mbox{} \\
+基于平移后的适应度，计算每个个体被选中的概率 $P_i$。个体被选中的概率与其适应度成正比，计算公式为：
+    \begin{equation}
+        P_i = \frac{f'_i}{\sum_{j=1}^{N} f'_j} \label{eq:prob}
+    \end{equation}
+其中 $N$ 为种群规模。由此建立离散的概率分布，适应度越高的旋律片段在“轮盘”上占据的面积越大，进入下一代的概率也随之增加。
+
+    \item \textbf{随机采样与种群更新} \mbox{} \\
+在产生新一代子片段时，利用上述概率分布 $P$，通过随机采样选取两个父代个体（Parent 1 \& Parent 2）作交叉变异，并以一定概率 \verb|mutation_rate| 发生音乐变换。重复上述采样、交叉、变异及音乐变换过程以迭代，直至新种群规模达到预设的 \verb|pop_size|。
+
+    \item 最后，算法会通过 \verb|max| 函数检索当前种群中适应度最高的个体作为最终输出。
+\end{enumerate}
+
+\section{适应度函数设计与实验结果}
+\subsection{适应度函数设计思路}
+本实验采用了一种“规则约束 + 神经网络评价”的双轨制适应度计算模型。
+其中规则约束部分基于经典乐理，从调性一致性、音程平滑度以及节奏重音分布、统计一致性四个维度构建了评价指标，旨在保证生成音乐的“正确性”，过滤掉违反听觉物理规律的个体。而另一部分，我们引入了预训练的 PyTorch 模型。该模型通过对原始语料特征向量的提取与分类，量化生成片段与目标风格的相似度。
+
+最后，通过 \verb|learned_mix| 因子动态调节两者的比例。这种设计既发挥了乐理规则在收敛速度上的优势，又利用了深度学习在捕捉复杂艺术特征上的长处，使进化出的旋律在维持规范性的同时，具备更高的艺术美感。
+
+\subsection{基于乐理规则的启发式适应度函数的设计思路}
+该函数对四个维度分别设定不同的权重，对生成的旋律片段进行加权打分，总分为 100 分。
+
+\begin{enumerate}
+    \item \textbf{调性一致} \mbox{} \\
+在本项目中，为了简化考虑，调性被抽象视作一个允许出现的音高类别集合，便于程序化建模与计算。
+具体而言，系统内部使用 MIDI 音高表示音符，每个音符的调性属性由其音高对 12 取模得到，即：
+\begin{equation}
+    \text{pitch\_class}(x) = x \bmod 12 \label{eq:pitch}
+\end{equation}
+其中 \(x\) 表示音符的 MIDI 音高值。一个调性可表示为一组合法的音高类别集合，例如，大调音阶可表示为\(\{0, 2, 4, 5, 7, 9, 11\}\)。
+我们检查旋律中的音符是否属于预设的音阶（暂只取 C 大调及 a 小调音阶）以确保其旋律的和谐稳定。如果一个片段大部分音符都在音阶内，得分就高。
+
+    \item \textbf{旋律平滑度惩罚} \mbox{} \\
+该维度检测相邻音符之间的音程差，并进行大跳惩罚和不和谐音程惩罚：如果音程超过 12 个半音（一个八度），或者出现了增四度或减五度，则对其扣分。
+
+    \item \textbf{节奏与重音稳定性} \mbox{} \\
+我们针对 4/4 拍音乐，检查落在“强拍”（即第 1 拍和第 3 拍）上的音符。如果强拍上的音是稳定音（为了简化考虑，暂只取主三和弦音 C-E-G），得分更高。
+
+    \item \textbf{统计一致性} \mbox{} \\
+该部分计算当前旋律的平均音高，并将其与初始输入片段的平均音高进行对比。
+这一操作防止遗传算法在进化过程中产生过大偏移，希望使生成的音乐在音区上与原曲保持风格一致。
+\end{enumerate}
+
+\subsection{基于深度学习的适应度评价模型}
+为了弥补人工规则在捕捉音乐神韵和风格特征上的局限性，本项目引入了一个基于 PyTorch 实现的二分类判别模型。该模型通过学习特定风格（jazz/pop/classical/random）音乐片段的统计分布，为遗传算法提供另一方向的审美评价。模型的核心思路是训练一个“判别器”，使其能够区分需要的风格和不是该风格的旋律片段。
+
+\subsubsection{数据预处理与样本生成}
+\begin{itemize}
+    \item \textbf{正样本：}我们收集的已作风格分类的 MIDI 音乐片段，已经如\eqref{eq:format}所示的格式编码为标准长度的音高时值列表。
+    \item \textbf{负样本：}负样本通过对正样本进行破坏性变换或完全随机生成得到。代码设计了四种模式来模拟糟糕或无序的音乐，包括：
+        \begin{enumerate}
+            \item \textbf{打乱：}保持音符组成不变，但完全打乱先后顺序，破坏旋律的连续性
+            \item \textbf{半音噪声：}在全音域内随机产生音符，模拟完全杂乱的背景噪声。
+            \item \textbf{倒置：}将旋律镜像反转，虽然保留了节奏，但改变了原本的调性走向。
+            \item \textbf{大跳干扰：}在旋律中强制插入极大的音程跳变（如突然升高/降低 12 个半音），模拟突兀且不和谐的听感。
+        \end{enumerate}
+    \item 在特征提取部分，我们通过 \verb|_feature_vector| 将旋律转化为 31 维特征向量。做法包括：
+        \begin{enumerate}
+             \item \textbf{音高分布：}统计旋律中每个音高的出现频率，形成 12 维直方图，反映旋律的调性特征。
+            \item \textbf{音程统计：}计算相邻音符之间的音程（绝对值 0~12）的出现次数，形成 13 维直方图。
+            \item \textbf{其他特征记录：}剩余的6维用来记录其他数值特征：
+                \begin{itemize}
+                    \item 旋律的平均音高、音高方差，分别衡量旋律的高低和分散程度。
+                    \item 旋律中落在调式内音符的比例，反映旋律的调性稳定性。
+                    \item 大跳（音程超过一个八度）、三全音以及音程方向变化的数量，用于描述旋律的音程结构。
+                \end{itemize}
+        \end{enumerate}
+\end{itemize}
+最终，每段旋律被转换为 31 维特征向量，作为 Torch 模型的输入，用于训练和适应度评分。
+
+\subsubsection{训练策略}
+在模型训练阶段，我们选择 \verb|BCEWithLogitsLoss| （带 \verb|Logits| 的二元交叉熵损失函数） 作为目标函数，用以衡量模型输出的判别概率与音乐标签之间的偏差。在参数优化方面，我们选择了具备自适应学习率特性 Adam 优化器。为了评估模型的实际泛化能力并防止过拟合，引入验证集（Validation Set） 机制进行实时监控。通过观察验证集上的准确率（Accuracy） 这一指标，可以通过调参优化模型。
+
+\subsection{评分融合机制}
+在遗传算法的\verb|run|循环中，个体的最终得分 $S_{final}$ 由启发式得分 $S_{h}$ 和 AI 模型评分 $S_{learned}$ 加权融合而成：
+\begin{equation}
+    S_{final} = (1 - \alpha) \cdot S_{h} + \alpha \cdot S_{learned} \label{eq:final}
+\end{equation}
+其中 $\alpha$（\verb|learned_mix|）为融合系数：
+\begin{itemize}
+    \item 当 $\alpha$ 较低时，生成的音乐更符合严谨的乐理规范；
+    \item 当 $\alpha$ 较高时，生成的音乐更趋向于训练集中所体现的特定风格（如 Classical 风格）。
+\end{itemize}
+
+\section{交互式可视化实验平台}
+为了提升模型调优的效率并直观展示研究成果，本项目基于React与FastAPI构建了一套完整的交互式实验平台。该平台不仅可作为我们项目的展示窗口，还为调参和适应度函数研究提供了方便工具。平台页面如图\ref{fig:result1}。
+
+\begin{figure}[htbp]
+    \centering % 图片居中
+    \includegraphics[width=0.8\textwidth]{figure/result1.png}
+    \caption{交互式可视化实验平台及生成示例展示} % 图片下方的文字
+    \label{fig:result1} % 用于文中引用
+\end{figure}
+
+\subsection{交互式参数调优与实时反馈}
+平台通过图形化界面将遗传算法（GA）的底层配置参数（如种群大小、变异率、迭代次数等）开放给用户。研究者可以选择需要的风格，通过滑动条动态调整搜索强度。这种“即调即看”的交互方式极大地缩短了从参数假设到结果验证的反馈周期。同时平台还支持将生成的旋律音列合成音频播放，这使得研究者可以从视觉和听觉双重维度，快速评估不同参数配置和适应度函数设计对旋律质量的实际影响，加速了我们的实验进程。
+
+\subsection{研究成果的记录留存机制}
+为了确保实验过程的可复现性，平台设计了完备的数据管理系统。其支持了参数回溯功能以及多用户账号系统：左侧有生成记录日期和得分的留存，点击历史作品可以还原生成该旋律时的全部参数配置。同时，基于\verb|SQLite + SQLAlchemy|的后端架构，其支持多用户云端保存作品，方便团队成员分类管理各自的实验样本。这些功能极大地方便了我们的研究。
+
+\section{优化过程与研究结果}
+\subsection{最佳模型参数和旋律结果}
+经过实验，针对不同风格找到了最佳的参数组合（基于 \verb|backend/models| 中的训练结果），如表\ref{tab}所示。通过对遗传算法在不同音乐风格下的参数调优与实验观察，我们可以发现适应度函数与进化策略对生成旋律的音乐特性有着显著影响。
+
+首先，针对古典风格（Classical）和流行风格（Pop），较低的变异率（0.005）与较多的迭代次数（300次）表现良好。在低变异率下，算法能够有效保留父代旋律中优秀的音程关系，确保了古典音乐所要求的严谨结构感；流行风格与古典风格参数相近，在模型引导下展现出更为通俗、规律的旋律走向，符合大众审美。
+
+相比之下，爵士风格（Jazz）和随机风格（Random）则适合较高的变异率（0.01）和相对较少的迭代次数（200次）。较高的变异率允许种群中出现更多不确定的突变，这为旋律引入了丰富的半音阶变化和意料之外的音程跳跃，契合爵士乐即兴感强、追求意外性的艺术特征。而对于随机风格的探索，高频次的变异则助力算法突破传统调性的束缚，进而在无调性的音乐边界进行更广泛的搜索与实验。
+
+总体而言，实验结果表明，变异率的动态调整不仅是算法收敛性的关键，更是决定生成音乐“稳定性”与“创造性”平衡的核心因素。
+
+\begin{table}[htbp]
+\centering
+\caption{不同风格的遗传算法最佳参数}
+\begin{tabular}{lcccl}
+\toprule
+风格 & 种群大小 & 变异率 & 迭代次数 & 最佳模型文件 \\ \midrule
+Classical & 50 & 0.005 & 300 & \verb|fitness_classical_300| \\
+Pop & 50 & 0.005 & 300 & \verb|fitness_pop_300| \\
+Jazz & 50 & 0.01 & 200 & \verb|fitness_jazz_200| \\
+Random & 50 & 0.01 & 200 & \verb|fitness_random_200|
+\\\bottomrule
+\end{tabular}
+\label{tab}
+\end{table}
+
+\subsection{启发式适应度函数和生成旋律的音乐特性间的联系}
+\begin{enumerate}
+    \item \textbf{单调惩罚} \mbox{} \\
+    在调试过程中，我们发现当下的适应度函数给予“稳定”的音列（如图\ref{fig:result2}）过高的奖励，导致单音的持续延长往往获得极高的分数。由此，我们引入单音时值过长的惩罚机制，加入适应度函数的分数组成中。惩罚引入后，旋律的起伏显著增加。    
+
+    \newpage
+    
+    \begin{figure}[htbp]
+        \centering % 图片居中
+        \includegraphics[width=0.9\textwidth]{figure/result2.png}
+        \caption{被打高分（96.410分）的“稳定”音列} % 图片下方的文字
+        \label{fig:result2} % 用于文中引用
+    \end{figure}
+
+    \item \textbf{调内奖励} \mbox{} \\
+    实验发现，对于 Jazz 风格，如果对调内奖励（即给予有更多音符在C大调的音阶内的旋律片段以加分）予以过多的权重，生成的旋律会退化成普通的 C 大调音阶，失去爵士味。因此这时必须要降低此权重或放宽调性的定义（如在原有调性的音高集合内加入新的音高），增加其音高多元性。
+    \begin{figure}[htbp]
+        \centering % 图片居中
+        \includegraphics[width=0.9\textwidth]{figure/result3.png}
+        \caption{Jazz风格生成示例} % 图片下方的文字
+        \label{fig:result3} % 用于文中引用
+    \end{figure}
+
+\end{enumerate}
+
+\section{总结}
+
+\subsection{亮点与不足}
+在这个项目中，我们实现了以遗传算法为核心的机器作曲的全过程。
+\begin{enumerate}
+    \item \textbf{亮点：}
+    \begin{itemize}
+        \item 在适应度函数的设计上，我们形成了规则约束式函数和深度学习模型结合的两重评价体系。这对于旋律进化起到了多元、完善的指导作用，并生成了较为满意的作品。
+        \item 我们引入了风格标签，能够生成对应形式的风格，以区分对于旋律审美的不同偏好。
+        \item 我们形成了一个美观、便捷的前端平台，这极大地方便了优化模型的过程，并为我们的成品提供了一个视听结合的多模态展示方式。
+    \end{itemize}
+    \item \textbf{不足：} 
+    \begin{itemize}
+        \item 在音乐理论的约束方面，我们采用的评价标准仍较有限。
+        \item 单声部的旋律体系较难完成乐曲风格的明显区分。
+        \item 在建模过程中，我们由于时间精力所限作了几处较大的简化，如休止符的忽略、调性建模简化为允许出现的音高类别集合等。这些方便了我们项目的实现，但也限制了适应度函数的更高准确度。
+        \item 数据集较小，不足以支持Pytorch模型的进一步优化。
+    \end{itemize}
+\end{enumerate}
+
+\subsection{其他}
+本次大作业的分工如下：
+\begin{itemize}
+    \item \textbf{数据收集：}王嘉怡
+    \item \textbf{前端搭建：}朱宏泽
+    \item \textbf{训练框架代码：}张扬皓
+    \item \textbf{模型调优：}郭梓昊、王俊阳
+    \item \textbf{报告撰写：}周静怡
+    \item \textbf{报告完善及格式调整：}王嘉怡
+\end{itemize}
+
+我们的全部工程文件可以从github上获得\ \href{https://github.com/elainafan/Music-And-Math-HW-2025Fall-PKU}{\faGithub \ Music-And-Math-HW-2025Fall-PKU}
+
+\end{document}
